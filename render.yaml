@@ -1,0 +1,42 @@
+# Render Blueprint — FREE tier trial deployment (not production-grade; see docs/DEPLOYMENT.md).
+# Render: New + > Blueprint > pick this repository. Render generates the three secrets
+# and prompts for the values marked `sync: false`.
+services:
+  - type: web
+    name: sania-employees
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci && npm run build
+    # Applies migrations (non-destructive), creates the first owner once if OWNER_* are set, then serves.
+    startCommand: npm run start:prod
+    # Liveness only: does not touch the database, so health probes let a free Neon database sleep.
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      # Neon "Direct connection" string (not the -pooler one), ending in ?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+      # The service's public URL, e.g. https://sania-employees.onrender.com (shown after creation)
+      - key: APP_BASE_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      # 256-bit base64 value — exactly the 32-byte AES key the app requires. Back it up.
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        generateValue: true
+      - key: IP_HASH_SECRET
+        generateValue: true
+      # First-owner bootstrap (used once). Remove OWNER_PASSWORD after first sign-in.
+      - key: OWNER_EMAIL
+        sync: false
+      - key: OWNER_NAME
+        sync: false
+      - key: OWNER_PASSWORD
+        sync: false
+      - key: DATABASE_POOL_MAX
+        value: "5"
+      - key: LOG_LEVEL
+        value: info
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"

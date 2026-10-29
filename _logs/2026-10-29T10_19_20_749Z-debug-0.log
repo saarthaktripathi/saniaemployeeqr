@@ -1,0 +1,20 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.21.1
+2 info using node@v24.14.1
+3 silly config load:file:C:\Users\HP\AppData\Roaming\npm\node_modules\npm\npmrc
+4 silly config load:file:D:\employee to QR\.npmrc
+5 silly config load:file:C:\Users\HP\.npmrc
+6 silly config load:file:C:\Users\HP\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm exec tsc --noEmit
+8 verbose argv "exec" "--" "tsc" "--noEmit"
+9 verbose logfile logs-max:10 dir:D:\employee to QR\_logs\2026-10-29T10_19_20_749Z-
+10 verbose logfile D:\employee to QR\_logs\2026-10-29T10_19_20_749Z-debug-0.log
+11 warn Unknown project config "pm-cache". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+12 silly logfile done cleaning log files
+13 http fetch GET 200 https://registry.npmjs.org/npm 278ms
+14 verbose cwd D:\employee to QR
+15 verbose os Windows_NT 10.0.26300
+16 verbose node v24.14.1
+17 verbose npm  v11.21.1
+18 verbose exit 0
+19 info ok

@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* Sania Job Bowl design tokens */
+@theme {
+  --color-page: #eef2f7;
+  --color-surface: #ffffff;
+  --color-border: #dde4ee;
+  --color-border-strong: #c5d0de;
+  --color-ink: #0f1d33;
+  --color-ink-muted: #56657a;
+  --color-ink-subtle: #8593a6;
+
+  --color-navy-950: #071528;
+  --color-navy-900: #0b1f3a;
+  --color-navy-800: #13294b;
+  --color-navy-700: #1c3762;
+  --color-navy-100: #e3eaf5;
+
+  --color-primary-700: #1747ab;
+  --color-primary-600: #1d5bd8;
+  --color-primary-500: #3a74e6;
+  --color-primary-50: #ecf2fe;
+
+  --color-teal-700: #0f766e;
+  --color-teal-600: #0d9488;
+  --color-teal-50: #e6f6f4;
+
+  --color-success-700: #15803d;
+  --color-success-50: #e5f6ea;
+  --color-danger-700: #b4412b;
+  --color-danger-600: #c9533b;
+  --color-danger-50: #fcebe7;
+  --color-warning-700: #a15c07;
+  --color-warning-50: #fdf3e1;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --shadow-card: 0 1px 2px rgb(15 29 51 / 0.04), 0 1px 3px rgb(15 29 51 / 0.06);
+  --radius-card: 0.875rem;
+}
+
+html {
+  background: var(--color-page);
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Visible keyboard focus everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-primary-600);
+  outline-offset: 2px;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  @page {
+    margin: 12mm;
+  }
+}
+
+.print-only {
+  display: none;
+}
