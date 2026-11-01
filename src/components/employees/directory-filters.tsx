@@ -46,12 +46,12 @@ export function DirectoryFilters({ departments, query }: { departments: string[]
           <label htmlFor="dir-search" className="sr-only">
             Search by name or employee ID
           </label>
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-subtle" aria-hidden />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-[18px] -translate-y-1/2 text-ink-muted" aria-hidden />
           <Input
             id="dir-search"
             type="search"
             placeholder="Search by employee name or ID (e.g. SJB-2026-001)"
-            className="pl-9"
+            className="h-12 rounded-xl border-white pl-10 shadow-[0_2px_10px_rgb(30_41_90/0.06)]"
             value={q}
             maxLength={100}
             onChange={(e) => {
@@ -127,7 +127,12 @@ function FilterSelect({ label, value, onChange, options }: { label: string; valu
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <Select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={cn("w-auto min-w-36 transition-colors", changed && label !== "Sort" && "border-primary-500/60 bg-primary-50/60 text-primary-700")}>
+      <Select
+        id={id}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn("h-12 w-auto min-w-40 rounded-xl border-white shadow-[0_2px_10px_rgb(30_41_90/0.06)] transition-colors", changed && label !== "Sort" && "border-primary-500/60 bg-primary-50 text-primary-700")}
+      >
         {options.map(([v, l]) => (
           <option key={v} value={v}>
             {l}

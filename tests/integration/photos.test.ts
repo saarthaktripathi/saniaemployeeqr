@@ -5,7 +5,7 @@ import { getEmployeePhoto, processPhoto, removeEmployeePhoto, uploadEmployeePhot
 import { issueCredential } from "@/server/services/credentials";
 import { decryptToken } from "@/server/security/crypto";
 import { verifyToken } from "@/server/services/verification";
-import { getDashboardStats } from "@/server/services/dashboard";
+import { getDashboardStats, getDashboardTrends, resetTrendCache, withLivePoint } from "@/server/services/dashboard";
 import { baseEmployee, ctx, db, makeUser, resetDb } from "../support/db";
 
 const image = (w: number, h: number, format: "jpeg" | "png" | "webp" = "jpeg") =>
@@ -166,5 +166,29 @@ describe("initial employment status and dashboard trend", () => {
     const old = await createEmployee(db, owner, { ...baseEmployee, firstName: "Old" }, ctx);
     await db.employee.update({ where: { id: old.id }, data: { createdAt: new Date(Date.now() - 40 * 86_400_000) } });
     expect((await getDashboardStats(db, owner, ctx)).newLast30d).toBe(1);
+  });
+
+  it("rebuilds weekly KPI history from real records and audited status changes", async () => {
+    resetTrendCache();
+    const owner = await makeUser("OWNER");
+    const weeksAgo = (w: number) => new Date(Date.now() - w * 7 * 86_400_000 - 3_600_000);
+    const a = await createEmployee(db, owner, baseEmployee, ctx);
+    const b = await createEmployee(db, owner, { ...baseEmployee, firstName: "B" }, ctx);
+    await db.employee.update({ where: { id: a.id }, data: { createdAt: weeksAgo(5) } });
+    await db.employee.update({ where: { id: b.id }, data: { createdAt: weeksAgo(2) } });
+    // b was deactivated one week ago (audited transition).
+    await db.employee.update({ where: { id: b.id }, data: { employmentStatus: "INACTIVE" } });
+    await db.auditLog.create({ data: { action: "employee.deactivated", targetType: "employee", targetId: b.id, createdAt: weeksAgo(1), metadata: { from: "ACTIVE", to: "INACTIVE" } } });
+
+    const t = await getDashboardTrends(db, owner, ctx);
+    expect(t.total).toEqual([0, 0, 1, 1, 1, 2, 2, 2]);
+    expect(t.active).toEqual([0, 0, 1, 1, 1, 2, 1, 1]);
+    expect(t.inactive).toEqual([0, 0, 0, 0, 0, 0, 1, 1]);
+
+    const stats = await getDashboardStats(db, owner, ctx);
+    const live = withLivePoint(t, stats);
+    expect(live.total.at(-1)).toBe(stats.totalRecords);
+    expect(live.active.at(-1)).toBe(stats.active);
+    resetTrendCache();
   });
 });

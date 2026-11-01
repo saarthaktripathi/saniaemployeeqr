@@ -2,14 +2,14 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("rounded-[var(--radius-card)] border border-border bg-surface shadow-[var(--shadow-card)]", className)} {...props} />;
+  return <div className={cn("rounded-[var(--radius-card)] border border-white bg-surface shadow-[0_4px_20px_rgb(30_41_90/0.06)]", className)} {...props} />;
 }
 
 export function CardHeader({ title, description, actions, eyebrow }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4">
       <div className="min-w-0">
-        {eyebrow && <p className="mb-1 text-xs font-semibold tracking-wider text-teal-700 uppercase">{eyebrow}</p>}
+        {eyebrow && <p className="mb-1 text-xs font-bold tracking-wider text-primary-600 uppercase">{eyebrow}</p>}
         <h2 className="text-base font-semibold text-ink">{title}</h2>
         {description && <p className="mt-0.5 text-sm text-ink-muted">{description}</p>}
       </div>
@@ -66,23 +66,70 @@ export function Alert({ tone = "info", title, children }: { tone?: Tone; title?:
   );
 }
 
-/** Page title block. `hero` adds the soft gradient panel used on primary pages. */
-export function PageHeader({ eyebrow, title, description, actions, hero, badges }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode; hero?: boolean; badges?: ReactNode }) {
+/** Splits a title so its last word can carry the brand gradient ("Employee **Directory**"). */
+function GradientTitle({ title }: { title: string }) {
+  const at = title.lastIndexOf(" ");
+  if (at < 0) return <span className="bg-gradient-to-r from-primary-600 to-violet-600 bg-clip-text text-transparent">{title}</span>;
+  return (
+    <>
+      {title.slice(0, at + 1)}
+      <span className="bg-gradient-to-r from-primary-500 via-violet-600 to-fuchsia-500 bg-clip-text text-transparent">{title.slice(at + 1)}</span>
+    </>
+  );
+}
+
+/**
+ * Page title block: a pastel gradient banner with soft colour blobs. `art` adds decorative
+ * artwork on wide screens (the directory's team illustration).
+ */
+export function PageHeader({
+  eyebrow,
+  title,
+  description,
+  actions,
+  badges,
+  art,
+  plain,
+}: {
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  actions?: ReactNode;
+  badges?: ReactNode;
+  art?: ReactNode;
+  /** Opt out of the banner (narrow utility pages). */
+  plain?: boolean;
+  /** @deprecated banner is now the default */
+  hero?: boolean;
+}) {
   return (
     <div
       className={cn(
-        "animate-fade mb-6 flex flex-wrap items-end justify-between gap-4",
-        hero &&
-          "relative overflow-hidden rounded-[var(--radius-card)] border border-primary-100 bg-[radial-gradient(120%_140%_at_0%_0%,#eef2ff_0%,#f3efff_38%,#e6f7fb_72%,#ffffff_100%)] px-5 py-5 sm:px-6",
+        "animate-fade relative mb-6 flex flex-wrap items-center justify-between gap-4",
+        !plain &&
+          "overflow-hidden rounded-[22px] border border-white bg-[linear-gradient(110deg,#eef2ff_0%,#f5f0ff_35%,#fdf2f8_62%,#ecfeff_100%)] px-5 py-5 shadow-[0_4px_24px_rgb(79_70_229/0.08)] sm:px-7 sm:py-6",
       )}
     >
-      <div className="min-w-0">
-        {eyebrow && <p className="text-xs font-semibold tracking-wider text-violet-600 uppercase">{eyebrow}</p>}
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-[26px]">{title}</h1>
-        {description && <p className="mt-1 max-w-2xl text-sm text-ink-muted">{description}</p>}
+      {!plain && (
+        <>
+          <span className="pointer-events-none absolute -top-16 -left-10 size-48 rounded-full bg-primary-500/10 blur-2xl" aria-hidden />
+          <span className="pointer-events-none absolute -right-10 -bottom-20 size-56 rounded-full bg-fuchsia-400/10 blur-2xl" aria-hidden />
+        </>
+      )}
+      <div className="relative min-w-0">
+        {eyebrow && (
+          <p className="text-xs font-bold tracking-wider uppercase">
+            <span className="text-cyan-600">{eyebrow.split(" ")[0]}</span> <span className="text-primary-600">{eyebrow.split(" ").slice(1).join(" ")}</span>
+          </p>
+        )}
+        <h1 className="mt-1 text-[26px] leading-tight font-extrabold tracking-tight text-navy-900 sm:text-[34px]">
+          <GradientTitle title={title} />
+        </h1>
+        {description && <p className="mt-1.5 max-w-2xl text-sm text-ink-muted">{description}</p>}
         {badges && <div className="mt-3 flex flex-wrap items-center gap-2">{badges}</div>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {art && <div className="pointer-events-none relative -my-6 ml-auto hidden min-[1600px]:block">{art}</div>}
+      {actions && <div className="relative flex flex-wrap gap-2">{actions}</div>}
     </div>
   );
 }

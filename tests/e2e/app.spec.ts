@@ -162,7 +162,7 @@ test.describe("directory", () => {
     await expect(page.getByTestId("employee-row")).toHaveCount(20);
     await page.getByRole("link", { name: "Next" }).click();
     await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByText(/Page 2 of \d+/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Page 2", exact: true })).toHaveAttribute("aria-current", "page");
 
     await page.goto("/dashboard");
     await page.getByLabel("Search by name or employee ID").fill(`SJB-${year}-001`);
@@ -213,7 +213,8 @@ test.describe("session", () => {
     const page = await ctx.newPage();
     await login(page, "hrstaff");
     const cookies = await ctx.cookies();
-    await page.getByRole("button", { name: /Sign out/ }).click();
+    await page.getByRole("button", { name: /Account menu/ }).click();
+    await page.getByRole("menuitem", { name: /Sign out/ }).click();
     await expect(page).toHaveURL(/\/login$/);
     // Replaying the old cookie must not work.
     const replay = await browser.newContext();

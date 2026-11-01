@@ -3,13 +3,14 @@ import { Download, Plus } from "lucide-react";
 import { db } from "@/server/db/client";
 import { requirePageActor } from "@/server/auth/session";
 import { can } from "@/server/authorization/permissions";
-import { getDashboardStats } from "@/server/services/dashboard";
+import { getDashboardStats, getDashboardTrends, withLivePoint } from "@/server/services/dashboard";
 import { listDepartments, listEmployees } from "@/server/services/employees";
 import { credentialState, idValidity } from "@/features/employees/rules";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/primitives";
 import { Insights } from "@/components/dashboard/stat-cards";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
+import { TeamIllustration } from "@/components/dashboard/team-illustration";
 import { DirectoryProvider } from "@/components/employees/directory-context";
 import { DirectoryFilters } from "@/components/employees/directory-filters";
 import { DirectoryTable, type DirectoryRow } from "@/components/employees/directory-table";
@@ -23,8 +24,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const flat = Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]).filter(([, v]) => v !== undefined && v !== ""));
 
   // One round trip each, in parallel; the list query is paginated and indexed in the database.
-  const [stats, result, departments] = await Promise.all([
+  const [stats, trends, result, departments] = await Promise.all([
     getDashboardStats(db, actor, ctx),
+    getDashboardTrends(db, actor, ctx),
     listEmployees(db, actor, flat, ctx).catch(() => listEmployees(db, actor, {}, ctx)),
     listDepartments(db, actor, ctx),
   ]);
@@ -57,10 +59,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <DirectoryProvider>
       <PageHeader
-        hero
         eyebrow="HR workspace"
         title="Employee Directory"
-        description="All employee records and their credential status. Select a card to filter; figures update live as your team makes changes."
+        description="All employee records and their credential status. Figures update live as your team makes changes."
+        art={<TeamIllustration />}
         actions={
           <>
             {can(actor, "employee:export") && (
@@ -79,10 +81,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </>
         }
       />
-      <KpiCards stats={stats} query={result.query} />
+      <KpiCards stats={stats} trends={withLivePoint(trends, stats)} query={result.query} />
       <DirectoryFilters departments={departments} query={result.query} />
-      <DirectoryTable rows={rows} perms={perms} total={result.total} canCreate={can(actor, "employee:create")} />
-      <Pagination page={result.page} pageCount={result.pageCount} total={result.total} pageSize={result.pageSize} params={flat as Record<string, string>} />
+      <DirectoryTable
+        rows={rows}
+        perms={perms}
+        total={result.total}
+        canCreate={can(actor, "employee:create")}
+        footer={<Pagination page={result.page} pageCount={result.pageCount} total={result.total} pageSize={result.pageSize} params={flat as Record<string, string>} />}
+      />
       <Insights stats={stats} />
     </DirectoryProvider>
   );

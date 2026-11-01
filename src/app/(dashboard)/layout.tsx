@@ -5,10 +5,9 @@ import { MobileNav, Sidebar, type NavItem } from "@/components/layout/nav";
 import { SIDEBAR_COOKIE } from "@/lib/ui-prefs";
 import { Notifications } from "@/components/layout/notifications";
 import { LiveIndicator, RealtimeProvider } from "@/components/layout/realtime";
-import { SignOutButton } from "@/components/auth/sign-out-button";
+import { UserMenu } from "@/components/layout/user-menu";
 import { requirePageActor } from "@/server/auth/session";
 import { can, ROLE_LABELS, type Permission } from "@/server/authorization/permissions";
-import { initials } from "@/lib/cn";
 
 const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/dashboard", label: "Employee Directory", icon: "directory", permission: "employee:read" },
@@ -32,31 +31,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <RealtimeProvider>
       <div className="flex min-h-screen">
-        <Sidebar items={items} user={user} initialCollapsed={collapsed} logo={<Logo tone="light" />} />
+        <Sidebar items={items} initialCollapsed={collapsed} logo={<Logo tone="light" />} />
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="no-print sticky top-0 z-20 border-b border-border/80 bg-white/85 backdrop-blur-md">
-            <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="relative flex min-w-0 flex-1 flex-col">
+          {/* Soft colour wash behind every page (fixed, GPU-cheap, no images). */}
+          <div className="no-print pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(60%_50%_at_85%_0%,rgb(167_139_250/0.16),transparent_70%),radial-gradient(45%_40%_at_10%_35%,rgb(34_211_238/0.10),transparent_70%),radial-gradient(50%_45%_at_70%_100%,rgb(244_114_182/0.10),transparent_70%),linear-gradient(180deg,#f6f7fe_0%,#f3f5fc_100%)]" aria-hidden />
+          <header className="no-print sticky top-0 z-20 bg-white/70 shadow-[0_1px_0_rgb(225_231_240/0.8)] backdrop-blur-md">
+            <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
               <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                 <MobileNav items={items} user={user} logo={<Logo tone="light" />} />
                 <span className="lg:hidden">
                   <Logo showText={false} />
                 </span>
-                <span className="hidden items-center gap-1.5 rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 md:inline-flex">
-                  <ShieldCheck className="size-3.5" aria-hidden /> Restricted HR environment
+                <span className="hidden items-center gap-2 rounded-full border border-primary-100 bg-[#eef1ff] px-3.5 py-1.5 text-xs font-semibold text-navy-800 md:inline-flex">
+                  <ShieldCheck className="size-4 text-primary-600" aria-hidden /> Restricted HR environment
                 </span>
                 <LiveIndicator />
               </div>
               <div className="flex items-center gap-1.5 sm:gap-3">
                 {can(actor, "audit:read") && <Notifications />}
-                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-medium text-ink">{actor.name}</p>
-                  <p className="text-xs text-ink-subtle">{ROLE_LABELS[actor.role]}</p>
-                </div>
-                <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 text-xs font-semibold text-white" aria-hidden>
-                  {initials(actor.name)}
-                </span>
-                <SignOutButton />
+                <UserMenu name={user.name} role={user.role} />
               </div>
             </div>
           </header>
