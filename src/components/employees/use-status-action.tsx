@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api-client";
 import { ConfirmDialog, type ConfirmOptions } from "@/components/ui/confirm-dialog";
@@ -54,7 +54,7 @@ export function useStatusAction(onDone?: () => void) {
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const request = (action: StatusAction, ids: string[], label: string) => setPending({ action, ids, label });
+  const request = useCallback((action: StatusAction, ids: string[], label: string) => setPending({ action, ids, label }), []);
 
   const dialog = pending ? (
     <ConfirmDialog

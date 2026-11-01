@@ -80,7 +80,11 @@ describe("employee creation", () => {
 
   it("rejects invalid payloads", async () => {
     const owner = await makeUser("OWNER");
-    await expect(createEmployee(db, owner, { ...baseEmployee, employmentStatus: "INACTIVE" }, ctx)).rejects.toThrow();
+    // Server-controlled fields are never accepted (mass-assignment protection). An initial
+    // employmentStatus is allowed, but only ACTIVE or INACTIVE.
+    for (const extra of [{ employeeCode: "SJB-1999-001" }, { version: 9 }, { archivedAt: "2026-01-01" }, { photoKey: "db:x" }, { employmentStatus: "ARCHIVED" }]) {
+      await expect(createEmployee(db, owner, { ...baseEmployee, ...extra }, ctx)).rejects.toThrow();
+    }
     await expect(createEmployee(db, owner, { firstName: "" }, ctx)).rejects.toThrow();
   });
 });

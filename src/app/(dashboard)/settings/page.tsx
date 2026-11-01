@@ -25,6 +25,7 @@ export default async function SettingsPage() {
           publicShowJobTitle: s.publicShowJobTitle,
           publicShowBusinessVertical: s.publicShowBusinessVertical,
           publicShowWorkLocation: s.publicShowWorkLocation,
+          publicShowPhoto: s.publicShowPhoto,
           auditRetentionDays: s.auditRetentionDays,
           verificationRetentionDays: s.verificationRetentionDays,
           requireMfaForPrivileged: s.requireMfaForPrivileged,

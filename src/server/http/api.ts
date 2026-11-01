@@ -56,7 +56,7 @@ function assertSameOrigin(req: NextRequest) {
 export async function readJson(req: NextRequest): Promise<unknown> {
   const type = req.headers.get("content-type") ?? "";
   if (!type.includes("application/json")) throw new AppError("VALIDATION", "Expected application/json");
-  const text = await readBounded(req, MAX_JSON_BYTES);
+  const text = new TextDecoder().decode(await readBoundedBytes(req, MAX_JSON_BYTES));
   try {
     return text ? JSON.parse(text) : {};
   } catch {
@@ -65,14 +65,18 @@ export async function readJson(req: NextRequest): Promise<unknown> {
 }
 
 export async function readText(req: NextRequest, max = MAX_UPLOAD_BYTES): Promise<string> {
-  return readBounded(req, max);
+  return new TextDecoder().decode(await readBoundedBytes(req, max));
 }
 
-async function readBounded(req: NextRequest, max: number): Promise<string> {
+export async function readBytes(req: NextRequest, max = MAX_UPLOAD_BYTES): Promise<Buffer> {
+  return readBoundedBytes(req, max);
+}
+
+async function readBoundedBytes(req: NextRequest, max: number): Promise<Buffer> {
   const declared = Number(req.headers.get("content-length") ?? 0);
   if (declared > max) throw new AppError("PAYLOAD_TOO_LARGE", "Request body too large");
   const reader = req.body?.getReader();
-  if (!reader) return "";
+  if (!reader) return Buffer.alloc(0);
   const chunks: Uint8Array[] = [];
   let size = 0;
   for (;;) {
@@ -85,7 +89,7 @@ async function readBounded(req: NextRequest, max: number): Promise<string> {
     }
     chunks.push(value);
   }
-  return new TextDecoder().decode(Buffer.concat(chunks));
+  return Buffer.concat(chunks);
 }
 
 export interface ApiContext<P> {

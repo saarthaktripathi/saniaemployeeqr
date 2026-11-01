@@ -13,6 +13,7 @@ import { getSettings } from "./settings";
  * - expiredIds: non-archived employees whose ID expiry date is before today (UTC)
  * - expiringSoon: non-archived, ID expires between today and today + warning window
  * - validCredentials: non-revoked, unexpired credentials of non-archived employees
+ * - newLast30d: non-archived employees created in the last 30 days
  * - verifications7d: public verification checks in the last 7 days, by result
  */
 export interface DashboardStats {
@@ -23,6 +24,7 @@ export interface DashboardStats {
   expiredIds: number;
   expiringSoon: number;
   validCredentials: number;
+  newLast30d: number;
   warnDays: number;
   verifications7d: { result: string; count: number }[];
   departments: { department: string; count: number }[];
@@ -34,6 +36,7 @@ export async function getDashboardStats(db: Db, actor: Actor, ctx: RequestContex
   const today = utcToday(now);
   const warnUntil = addDays(today, settings.expiryWarningDays);
   const since = addDays(now, -7);
+  const since30 = addDays(now, -30);
 
   const [counts, creds, verifications, departments] = await Promise.all([
     db.$queryRaw<Record<string, bigint>[]>`
@@ -43,7 +46,8 @@ export async function getDashboardStats(db: Db, actor: Actor, ctx: RequestContex
         count(*) FILTER (WHERE "archivedAt" IS NULL AND "employmentStatus" = 'INACTIVE') AS inactive,
         count(*) FILTER (WHERE "archivedAt" IS NOT NULL) AS archived,
         count(*) FILTER (WHERE "archivedAt" IS NULL AND "idExpiresAt" < ${today}::date) AS expired,
-        count(*) FILTER (WHERE "archivedAt" IS NULL AND "idExpiresAt" >= ${today}::date AND "idExpiresAt" <= ${warnUntil}::date) AS expiring
+        count(*) FILTER (WHERE "archivedAt" IS NULL AND "idExpiresAt" >= ${today}::date AND "idExpiresAt" <= ${warnUntil}::date) AS expiring,
+        count(*) FILTER (WHERE "archivedAt" IS NULL AND "createdAt" >= ${since30}) AS recent
       FROM "employee"`,
     db.$queryRaw<{ n: bigint }[]>`
       SELECT count(*) AS n FROM "employee_credential" c
@@ -73,6 +77,7 @@ export async function getDashboardStats(db: Db, actor: Actor, ctx: RequestContex
     expiredIds: n(c.expired),
     expiringSoon: n(c.expiring),
     validCredentials: n(creds[0]?.n),
+    newLast30d: n(c.recent),
     warnDays: settings.expiryWarningDays,
     verifications7d: verifications.map((v) => ({ result: v.result, count: v._count._all })),
     departments: departments.map((d) => ({ department: d.department, count: d._count._all })),

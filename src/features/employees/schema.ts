@@ -26,7 +26,11 @@ const employeeFields = {
 
 /** Create payload. `.strict()` rejects unknown keys (mass-assignment protection). */
 export const employeeCreateSchema = z
-  .object(employeeFields)
+  .object({
+    ...employeeFields,
+    /** Initial status only; later changes go through the audited status actions. */
+    employmentStatus: z.preprocess((v) => (typeof v === "string" ? v.trim().toUpperCase() : v), z.enum(["ACTIVE", "INACTIVE"])).default("ACTIVE"),
+  })
   .strict()
   .refine((v) => !v.idIssueDate || !v.idExpiresAt || v.idExpiresAt >= v.idIssueDate, {
     message: "Expiry must be on or after the issue date",

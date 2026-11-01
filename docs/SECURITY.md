@@ -36,6 +36,8 @@ This document describes what the platform protects, the threats considered, the 
 | Token leakage | Only SHA-256 hash + AES-GCM ciphertext stored; ciphertext erased on revocation; logger redacts token/cookie/password keys; `Referrer-Policy: no-referrer` on verify pages | Unit tests |
 | Sensitive data in errors | Central error mapper returns generic 500 + request id; details only in server logs | Unit test |
 | CSV/formula injection | Export cells starting with `= + - @` are prefixed with `'`; phone never exported | Integration test |
+| Malicious image uploads | Photo uploads require `employee:update` (or `employee:create` for records you created); declared type must be JPEG/PNG/WebP; content is decoded by `sharp` with a pixel limit, size ≤ 5 MB, min 128 px; re-encoded to WebP, which drops EXIF/GPS and any embedded payload; served with `nosniff`, `default-src 'none'` CSP and `private` caching | Integration + e2e tests |
+| Photo enumeration | HR photo API needs a session and `employee:read`. The public page never exposes a photo URL — the image is inlined only after the opaque QR token resolves, and only if System Rules allow it | Integration test |
 | DoS via large/expensive requests | 64 KB JSON / 1 MB CSV body limits; page size ≤ 100; query length ≤ 100; 15 s statement timeout; bulk ≤ 200/500 rows; rate limits on creation, issuance, bulk, export | Unit tests |
 | Audit tampering | DB triggers block UPDATE/DELETE on `audit_log`; purge requires `SET LOCAL app.audit_purge='on'` | Integration tests |
 | Open redirect / SSRF | No user-controlled redirects; no server-side URL fetching | Design |

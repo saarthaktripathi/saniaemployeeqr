@@ -6,6 +6,7 @@ import { getEmployee, listDepartments } from "@/server/services/employees";
 import { getSettings } from "@/server/services/settings";
 import { AppError } from "@/lib/errors";
 import { toIsoDate } from "@/features/shared/schema";
+import { employeePhotoUrl } from "@/features/employees/photo";
 import { PageHeader } from "@/components/ui/primitives";
 import { EmployeeForm } from "@/components/employees/employee-form";
 
@@ -29,6 +30,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
         mode={{ kind: "edit", id, version: employee.version }}
         departments={departments}
         defaultValidityDays={settings.defaultIdValidityDays}
+        photoUrl={employee.photoKey ? employeePhotoUrl(id, employee.photoUpdatedAt, "full") : null}
         initial={{
           firstName: employee.firstName,
           lastName: employee.lastName,

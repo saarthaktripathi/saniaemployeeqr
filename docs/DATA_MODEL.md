@@ -7,13 +7,14 @@ Source of truth: `prisma/schema.prisma` and `prisma/migrations/`. Hand-written S
 | Table | Purpose | Notes |
 | --- | --- | --- |
 | `user`, `session`, `account`, `verification`, `twoFactor`, `rateLimit` | Better Auth tables | `user.role` (`OWNER`/`HR_ADMIN`/`HR_STAFF`), `isActive`, `extraPermissions`. Password hashes (Argon2id) live in `account.password` |
-| `employee` | Employee records | UUID PK; immutable unique `employeeCode`; optimistic `version`; `archivedAt` |
+| `employee` | Employee records | UUID PK; immutable unique `employeeCode`; optimistic `version`; `archivedAt`; `photoKey` + `photoUpdatedAt` (storage reference and cache-busting stamp for the profile photo) |
+| `employee_photo` | Profile photo bytes | PK = `employeeId` (cascade delete). 512×512 WebP + 96×96 thumbnail, re-encoded on the server (metadata stripped), typically 15–40 KB. Kept out of the `employee` row so directory queries stay small. Accessed only through the `PhotoStore` interface in `src/server/services/photos.ts`, so R2/S3 can replace it without schema changes |
 | `employee_code_counter` | Per (prefix, year) sequence | Atomic upsert allocates codes |
 | `employee_credential` | QR credentials | `tokenHash` (unique), `tokenCiphertext`, `expiresAt`, `revokedAt`, `revokeReason` |
 | `audit_log` | Append-only audit trail | UPDATE/DELETE blocked by trigger |
 | `verification_event` | Public verification analytics | Result + keyed IP hash, retention-limited |
 | `outbox_event` | Real-time outbox | `pg_notify` trigger on insert; purged after 7 days |
-| `company_settings` | Singleton (id = 1) | System Rules |
+| `company_settings` | Singleton (id = 1) | System Rules (incl. `publicShowPhoto`: whether the verification page shows the photo) |
 | `app_rate_limit` | Fixed-window counters | Verification, creation, issuance, bulk, export |
 
 ## Status definitions

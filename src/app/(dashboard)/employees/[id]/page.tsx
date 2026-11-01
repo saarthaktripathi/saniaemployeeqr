@@ -13,7 +13,8 @@ import { AppError } from "@/lib/errors";
 import { credentialState, idValidity } from "@/features/employees/rules";
 import { formatDate, formatDateTime } from "@/lib/cn";
 import { ButtonLink } from "@/components/ui/button";
-import { Alert, Card, CardHeader, DescriptionList, PageHeader } from "@/components/ui/primitives";
+import { Alert, Card, CardHeader, DescriptionList } from "@/components/ui/primitives";
+import { EmployeeAvatar } from "@/components/employees/employee-avatar";
 import { CredentialBadge, EmploymentBadge, IdValidityBadge } from "@/components/employees/status-badges";
 import { EmployeeStatusActions } from "@/components/employees/employee-status-actions";
 import { CredentialPanel } from "@/components/employees/credential-panel";
@@ -43,18 +44,23 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
       <Link href="/dashboard" className="no-print mb-3 inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> Employee Directory
       </Link>
-      <PageHeader
-        eyebrow={employee.employeeCode}
-        title={employee.displayName}
-        description={`${employee.jobTitle} · ${employee.department}`}
-        actions={
-          can(actor, "employee:update") && !archived ? (
-            <ButtonLink href={`/employees/${id}/edit`} variant="secondary">
-              <Pencil className="size-4" aria-hidden /> Edit
-            </ButtonLink>
-          ) : undefined
-        }
-      />
+      <div className="animate-fade mb-6 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-primary-100 bg-[radial-gradient(120%_140%_at_0%_0%,#eef2ff_0%,#f3efff_38%,#e6f7fb_72%,#ffffff_100%)] px-5 py-5 sm:px-6">
+        <div className="flex min-w-0 items-center gap-4">
+          <EmployeeAvatar id={id} name={employee.displayName} photoUpdatedAt={employee.photoKey && employee.photoUpdatedAt ? employee.photoUpdatedAt.toISOString() : null} size="lg" className="shadow-md ring-4" />
+          <div className="min-w-0">
+            <p className="font-mono text-xs font-semibold tracking-wider text-violet-600">{employee.employeeCode}</p>
+            <h1 className="mt-0.5 truncate text-2xl font-semibold tracking-tight text-ink">{employee.displayName}</h1>
+            <p className="mt-0.5 text-sm text-ink-muted">
+              {employee.jobTitle} · {employee.department}
+            </p>
+          </div>
+        </div>
+        {can(actor, "employee:update") && !archived && (
+          <ButtonLink href={`/employees/${id}/edit`} variant="secondary">
+            <Pencil className="size-4" aria-hidden /> Edit
+          </ButtonLink>
+        )}
+      </div>
 
       {archived && (
         <div className="mb-5">

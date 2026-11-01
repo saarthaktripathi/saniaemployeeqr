@@ -8,10 +8,12 @@ A full-stack web application for managing employee records and issuing a unique,
 
 | Area | What it does |
 | --- | --- |
-| HR dashboard | Directory with server-side search, filters, sort and pagination; add/edit; deactivate/reactivate/archive; **delete (single or bulk)**; bulk status changes; CSV import/export; live updates across sessions |
+| HR dashboard | Collapsible sidebar, notifications (recent activity), interactive KPI cards that filter the directory in place; server-side search, combinable filters, sort and pagination; table with photos (cards on phones); add/edit; deactivate/reactivate/archive; delete (single or bulk); CSV/Excel import, CSV export; live updates across sessions |
+| Employee photos | Drag-and-drop upload with circular crop, zoom and reposition; JPEG/PNG/WebP; compressed in the browser and re-encoded on the server; shown in the directory, profile, ID card and verification page |
+| Digital ID card | Corporate CR80 card with photo, name, designation, ID, department, validity, live status and QR; download as PNG or PDF, or print |
 | Duplicate cleanup | Import can skip employees that already exist; the Import page lists duplicate records (e.g. a CSV uploaded twice) and removes the extra copies in one click, keeping one per person |
 | QR credentials | Issue, preview, copy, print, reissue and revoke. Each QR holds only an opaque 256-bit token |
-| Public verification | `/verify/<token>` shows company-approved fields and an explicit state: Verified — Active, Inactive, ID expired, Credential expired, Revoked, Invalid, or Unavailable |
+| Public verification | `/verify/<token>` (mobile-first, no login) shows the ID card with photo and one of five verdicts: **VALID**, **INACTIVE**, **EXPIRED**, **REVOKED**, **INVALID** — decided by the server on every scan |
 | Access control | Owner / HR Administrator / HR Staff roles plus individually grantable permissions, enforced on the server |
 | Security | Argon2id passwords, TOTP MFA (enforceable for privileged roles), DB-backed rate limits, CSP with nonces, CSRF origin checks, append-only audit log |
 
@@ -42,6 +44,15 @@ Owners and HR Administrators (permission `employee:delete`) can permanently dele
 Deletion asks for a reason, is all-or-nothing, removes the employee's QR credentials (printed QRs then show *Invalid*) and is recorded in the append-only audit log. It cannot be undone — use **Archive** if the record may be needed later. Records match as duplicates when name, department, job title, business vertical, location, joining date, phone and work email are all equal (ignoring case and extra spaces).
 
 API: `POST /api/employees/delete` with `{ "ids": [...], "reason": "..." }`; `GET /api/employees/duplicates`; `POST /api/employees/import?skipDuplicates=1`.
+
+## Employee photos and ID cards
+
+1. **Add Employee** (or **Edit**) → drag a photo onto the upload area or press **Browse files**. Drag to reposition, use the slider or mouse wheel to zoom, and press **Replace** or **Remove** if needed. The photo uploads (with a progress bar) right after the record is saved.
+2. On the employee page, **Issue QR credential**, then **ID card** → **PNG**, **PDF** (card-sized) or **Print**.
+3. Scanning the QR opens `/verify/<token>` on any phone, with no login. It shows the card with the photo and a live verdict. Deactivating, revoking or expiry changes the verdict immediately.
+4. **System Rules → Employee photo** controls whether the photo appears on the public page.
+
+Photos are stored in the `employee_photo` table (≈30 KB each), never in the employee row. The storage is behind an interface, so an object store (Cloudflare R2 / S3) can replace it later without changing the pages. The `20261101120000_employee_photo` migration only adds tables and columns; on Render it runs automatically at start.
 
 ### Logo
 

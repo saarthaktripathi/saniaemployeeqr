@@ -1,17 +1,30 @@
 /** Minimal RFC 4180 CSV helpers. */
 
+const CRLF = "\r\n";
+
 /** Neutralizes spreadsheet formula injection (cells starting with = + - @ tab CR). */
 function neutralize(value: string): string {
   return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
 }
 
-function quote(value: string): string {
-  const v = neutralize(value);
+function quoteRaw(v: string): string {
   return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
+function quote(value: string): string {
+  return quoteRaw(neutralize(value));
+}
+
+/**
+ * Encodes rows without formula neutralisation. Only for data we send to our own importer
+ * (e.g. an .xlsx converted in the browser), never for files users open in a spreadsheet.
+ */
+export function encodeCsvForImport(rows: string[][]): string {
+  return rows.map((r) => r.map(quoteRaw).join(",")).join(CRLF) + CRLF;
+}
+
 export function toCsv(header: string[], rows: (string | number)[][]): string {
-  return [header, ...rows].map((r) => r.map((c) => quote(String(c))).join(",")).join("\r\n") + "\r\n";
+  return [header, ...rows].map((r) => r.map((c) => quote(String(c))).join(",")).join(CRLF) + CRLF;
 }
 
 /** Parses CSV text into rows of cells. Handles quoted fields, escaped quotes and CRLF. */

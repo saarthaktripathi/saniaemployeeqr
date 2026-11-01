@@ -3,9 +3,11 @@ import { Badge } from "@/components/ui/primitives";
 import { formatDateTime } from "@/lib/cn";
 import type { AuditRow } from "@/server/services/audit-read";
 
-const LABELS: Record<string, string> = {
+export const AUDIT_LABELS: Record<string, string> = {
   "employee.created": "Employee created",
   "employee.updated": "Employee updated",
+  "employee.photo_updated": "Employee photo updated",
+  "employee.photo_removed": "Employee photo removed",
   "employee.deactivated": "Employee deactivated",
   "employee.reactivated": "Employee reactivated",
   "employee.archived": "Employee archived",
@@ -48,7 +50,7 @@ export function AuditList({ rows, compact }: { rows: AuditRow[]; compact?: boole
           <li key={r.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm">
             <div className="min-w-0">
               <p className="font-medium text-ink">
-                {LABELS[r.action] ?? r.action}
+                {AUDIT_LABELS[r.action] ?? r.action}
                 {r.outcome !== "SUCCESS" && (
                   <Badge tone={r.outcome === "DENIED" ? "warning" : "danger"} className="ml-2 align-middle">
                     {r.outcome.toLowerCase()}

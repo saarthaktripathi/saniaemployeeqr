@@ -8,7 +8,7 @@ const OFFICIAL = "/branding/sania-job-bowl-logo.png";
 const PLACEHOLDER = "/branding/logo-placeholder.svg";
 
 let resolved: string | null = null;
-function logoSrc(): string {
+export function logoSrc(): string {
   if (resolved) return resolved;
   const exists = fs.existsSync(path.join(process.cwd(), "public", OFFICIAL));
   resolved = exists ? OFFICIAL : PLACEHOLDER;

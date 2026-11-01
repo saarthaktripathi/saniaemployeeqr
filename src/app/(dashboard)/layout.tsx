@@ -1,7 +1,9 @@
 import { ShieldCheck } from "lucide-react";
-import Link from "next/link";
+import { cookies } from "next/headers";
 import { Logo } from "@/components/layout/logo";
-import { MobileNav, SidebarNav, type NavItem } from "@/components/layout/nav";
+import { MobileNav, Sidebar, type NavItem } from "@/components/layout/nav";
+import { SIDEBAR_COOKIE } from "@/lib/ui-prefs";
+import { Notifications } from "@/components/layout/notifications";
 import { LiveIndicator, RealtimeProvider } from "@/components/layout/realtime";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { requirePageActor } from "@/server/auth/session";
@@ -24,48 +26,38 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { actor } = await requirePageActor(undefined, { allowWithoutMfa: true });
   // Menu visibility is cosmetic; every page and API re-checks permissions server-side.
   const items = NAV.filter((n) => !n.permission || can(actor, n.permission)).map(({ href, label, icon }) => ({ href, label, icon }));
+  const user = { name: actor.name, role: ROLE_LABELS[actor.role] };
+  const collapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "collapsed";
 
   return (
     <RealtimeProvider>
       <div className="flex min-h-screen">
-        <aside className="no-print sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-navy-900 px-4 py-5 lg:flex">
-          <Link href="/dashboard" className="mb-8 rounded-md px-1">
-            <Logo tone="light" />
-          </Link>
-          <SidebarNav items={items} />
-          <div className="mt-auto rounded-lg bg-white/6 p-3 text-xs text-white/70">
-            <p className="flex items-center gap-1.5 font-semibold text-teal-50">
-              <ShieldCheck className="size-3.5" aria-hidden /> Restricted HR environment
-            </p>
-            <p className="mt-1">Access is logged. Handle employee data per company policy.</p>
-          </div>
-        </aside>
+        <Sidebar items={items} user={user} initialCollapsed={collapsed} logo={<Logo tone="light" />} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="no-print sticky top-0 z-20 border-b border-border bg-white/90 backdrop-blur">
-            <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-              <div className="flex items-center gap-3">
+          <header className="no-print sticky top-0 z-20 border-b border-border/80 bg-white/85 backdrop-blur-md">
+            <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                <MobileNav items={items} user={user} logo={<Logo tone="light" />} />
                 <span className="lg:hidden">
                   <Logo showText={false} />
                 </span>
-                <span className="hidden items-center gap-1.5 rounded-full bg-navy-100 px-2.5 py-1 text-xs font-semibold text-navy-800 sm:inline-flex">
+                <span className="hidden items-center gap-1.5 rounded-full border border-primary-100 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 md:inline-flex">
                   <ShieldCheck className="size-3.5" aria-hidden /> Restricted HR environment
                 </span>
                 <LiveIndicator />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 sm:gap-3">
+                {can(actor, "audit:read") && <Notifications />}
                 <div className="hidden text-right sm:block">
                   <p className="text-sm font-medium text-ink">{actor.name}</p>
                   <p className="text-xs text-ink-subtle">{ROLE_LABELS[actor.role]}</p>
                 </div>
-                <span className="grid size-9 place-items-center rounded-full bg-navy-800 text-xs font-semibold text-white" aria-hidden>
+                <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary-500 to-violet-600 text-xs font-semibold text-white" aria-hidden>
                   {initials(actor.name)}
                 </span>
                 <SignOutButton />
               </div>
-            </div>
-            <div className="px-4 pb-3 sm:px-6 lg:hidden">
-              <MobileNav items={items} />
             </div>
           </header>
           <main id="main" className="flex-1 px-4 py-6 sm:px-6 lg:px-8">

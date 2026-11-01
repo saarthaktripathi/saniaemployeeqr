@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api-client";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -21,7 +21,7 @@ export function useDeleteAction({ onDone, redirectTo }: { onDone?: () => void; r
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const request = (ids: string[], label: string, description?: string) => setPending({ ids, label, description });
+  const request = useCallback((ids: string[], label: string, description?: string) => setPending({ ids, label, description }), []);
 
   const dialog = pending ? (
     <ConfirmDialog

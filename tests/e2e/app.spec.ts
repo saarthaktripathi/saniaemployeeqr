@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import sharp from "sharp";
 import { ACCOUNTS, login, stateFile } from "./helpers";
 
 const year = new Date().getUTCFullYear();
@@ -101,29 +102,31 @@ test.describe("employee lifecycle and QR verification", () => {
     const pub = await browser.newContext();
     const verifier = await pub.newPage();
     await verifier.goto(url);
-    await expect(verifier.getByTestId("verification-status")).toHaveText("Verified — Active");
+    await expect(verifier.getByTestId("verification-status")).toHaveText("VALID");
     await expect(verifier.getByTestId("employee-name")).toHaveText("Lifecycle Testcase");
-    await expect(verifier.getByText("Senior QA Analyst")).toBeVisible();
+    await expect(verifier.getByText("Senior QA Analyst").first()).toBeVisible();
     // The public page never links into the HR dashboard.
     await expect(verifier.locator('a[href^="/dashboard"], a[href^="/employees"]')).toHaveCount(0);
 
     await page.getByRole("button", { name: "Deactivate" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Deactivate" }).click();
+    await expect(page.getByRole("button", { name: "Reactivate" })).toBeVisible();
     await expect(page.getByText("Inactive", { exact: true }).first()).toBeVisible();
     await verifier.reload();
-    await expect(verifier.getByTestId("verification-status")).toHaveText("Inactive employee");
+    await expect(verifier.getByTestId("verification-status")).toHaveText("INACTIVE");
 
     await page.getByRole("button", { name: "Reactivate" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Reactivate" }).click();
+    await expect(page.getByRole("button", { name: "Deactivate" })).toBeVisible();
     await verifier.reload();
-    await expect(verifier.getByTestId("verification-status")).toHaveText("Verified — Active");
+    await expect(verifier.getByTestId("verification-status")).toHaveText("VALID");
 
     await page.getByRole("button", { name: "Revoke" }).click();
     await page.getByRole("dialog").getByLabel(/Reason/).fill("Card lost during e2e");
     await page.getByRole("dialog").getByRole("button", { name: "Revoke" }).click();
     await expect(page.getByText("No active QR credential")).toBeVisible();
     await verifier.reload();
-    await expect(verifier.getByTestId("verification-status")).toHaveText("Credential revoked");
+    await expect(verifier.getByTestId("verification-status")).toHaveText("REVOKED");
 
     await pub.close();
     await ctx.close();
@@ -137,15 +140,16 @@ test.describe("employee lifecycle and QR verification", () => {
     const url = await issueQr(page);
     const verifier = await (await browser.newContext()).newPage();
     await verifier.goto(url);
-    await expect(verifier.getByTestId("verification-status")).toHaveText("ID expired");
+    await expect(verifier.getByTestId("verification-status")).toHaveText("EXPIRED");
+    await expect(verifier.getByTestId("verification-label")).toHaveText("ID validity date has passed");
     await ctx.close();
   });
 
   test("unknown and malformed links show an invalid state", async ({ page }) => {
     await page.goto(`/verify/${"A".repeat(43)}`);
-    await expect(page.getByTestId("verification-status")).toHaveText("Invalid or unknown credential");
+    await expect(page.getByTestId("verification-status")).toHaveText("INVALID");
     await page.goto("/verify/not-a-real-token");
-    await expect(page.getByTestId("verification-status")).toHaveText("Invalid or unknown credential");
+    await expect(page.getByTestId("verification-status")).toHaveText("INVALID");
     await expect(page.getByTestId("employee-name")).toHaveCount(0);
   });
 });
@@ -197,7 +201,7 @@ test.describe("audit and real-time", () => {
 
     // No reload in the watcher: the SSE event triggers a refresh of server data.
     await expect(watcher.getByTestId("stat-total-records").filter({ visible: true })).toHaveText(String(before + 1), { timeout: 15_000 });
-    await expect(watcher.getByText("Realtime Testcase")).toBeVisible();
+    await expect(watcher.getByTestId("employee-row").getByText("Realtime Testcase")).toBeVisible();
     await watcherCtx.close();
     await editorCtx.close();
   });
@@ -224,7 +228,7 @@ test.describe("responsive and accessible", () => {
   test("mobile layout has no horizontal overflow", async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: stateFile("owner"), viewport: { width: 375, height: 812 } });
     const page = await ctx.newPage();
-    for (const path of ["/dashboard", "/employees/new", "/"]) {
+    for (const path of ["/dashboard", "/employees/new", "/employees/import", "/activity", "/"]) {
       await page.goto(path);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, path).toBeLessThanOrEqual(0);
@@ -248,5 +252,164 @@ test.describe("responsive and accessible", () => {
     expect(h["x-content-type-options"]).toBe("nosniff");
     expect(h["x-frame-options"]).toBe("DENY");
     expect(h["x-powered-by"]).toBeUndefined();
+  });
+});
+
+const photoFile = async (name = "portrait.png", w = 600, h = 800) => ({
+  name,
+  mimeType: "image/png",
+  buffer: await sharp({ create: { width: w, height: h, channels: 3, background: { r: 40, g: 110, b: 190 } } }).png().toBuffer(),
+});
+
+test.describe("employee photo and digital ID card", () => {
+  test("add with photo → QR → scan shows the card with the photo; remove on edit", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    await page.goto("/employees/new");
+    await page.getByLabel("First name").fill("Photo");
+    await page.getByLabel("Last name").fill("Testcase");
+    await page.getByLabel("Department").fill("Quality");
+    await page.getByLabel("Approved job title").fill("Photo Analyst");
+    await page.locator("#photo-file").filter({ visible: true }).setInputFiles(await photoFile());
+    await expect(page.getByRole("slider", { name: /Photo position/ })).toBeVisible();
+    await page.getByRole("slider", { name: "Zoom", exact: true }).fill("1.5");
+    await page.getByRole("button", { name: "Create employee" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Photo Testcase");
+    // Profile header shows the stored photo (served by the authenticated photo API).
+    const avatar = page.locator('img[src*="/photo?size=full"]').first();
+    await expect(avatar).toBeVisible();
+    await expect.poll(() => avatar.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(512);
+
+    const url = await issueQr(page);
+    const verifierCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const verifier = await verifierCtx.newPage();
+    await verifier.goto(url);
+    await expect(verifier.getByTestId("verification-status")).toHaveText("VALID");
+    await expect(verifier.getByTestId("employee-name")).toHaveText("Photo Testcase");
+    await expect(verifier.locator('[data-testid="id-card-svg"] image[href^="data:image/webp"]')).toHaveCount(1);
+    const overflow = await verifier.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    // ID card page: card with photo, PNG and PDF downloads.
+    await page.getByRole("link", { name: "ID card" }).click();
+    await expect(page.locator('[data-testid="id-card-svg"] image[href^="data:image/webp"]')).toHaveCount(1);
+    const png = page.waitForEvent("download");
+    await page.getByRole("button", { name: "PNG" }).click();
+    expect((await png).suggestedFilename()).toMatch(/-id-card\.png$/);
+    const pdf = page.waitForEvent("download");
+    await page.getByRole("button", { name: "PDF" }).click();
+    const pdfFile = await pdf;
+    expect(pdfFile.suggestedFilename()).toMatch(/-id-card\.pdf$/);
+    const bytes = await (await import("node:fs/promises")).readFile((await pdfFile.path())!);
+    expect(bytes.subarray(0, 8).toString("latin1")).toBe("%PDF-1.4");
+
+    // Edit: existing photo is shown; remove it and the card falls back to initials.
+    await page.goto(page.url().replace(/\/id-card$/, "/edit"));
+    await expect(page.getByRole("img", { name: /Current photo of/ })).toBeVisible();
+    await page.getByRole("button", { name: "Remove" }).click();
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Photo Testcase");
+    await expect(page.locator('img[src*="/photo?size=full"]')).toHaveCount(0);
+    await verifier.reload();
+    await expect(verifier.locator('[data-testid="id-card-svg"] image[href^="data:"]')).toHaveCount(0);
+    await verifierCtx.close();
+    await ctx.close();
+  });
+
+  test("rejects unsupported and too-small images", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    await page.goto("/employees/new");
+    await page.locator("#photo-file").filter({ visible: true }).setInputFiles({ name: "x.gif", mimeType: "image/gif", buffer: Buffer.from("GIF89a") });
+    await expect(page.getByTestId("photo-error")).toHaveText(/JPEG, PNG or WebP/);
+    await page.locator("#photo-file").filter({ visible: true }).setInputFiles(await photoFile("tiny.png", 60, 60));
+    await expect(page.getByTestId("photo-error")).toHaveText(/too small/);
+    // The server enforces its own rules even if the browser checks are bypassed.
+    const origin = new URL(page.url()).origin;
+    const created = await page.request.post("/api/employees", { data: { firstName: "Upload", department: "Ops", jobTitle: "Lead" }, headers: { Origin: origin } });
+    const { employee } = await created.json();
+    const bad = await page.request.put(`/api/employees/${employee.id}/photo`, { data: Buffer.from("not an image"), headers: { "Content-Type": "image/png", Origin: origin } });
+    expect(bad.status()).toBe(422);
+    const gif = await page.request.put(`/api/employees/${employee.id}/photo`, { data: Buffer.from("GIF89a"), headers: { "Content-Type": "image/gif", Origin: origin } });
+    expect(gif.status()).toBe(422);
+    await ctx.close();
+  });
+
+  test("read-only HR staff cannot upload photos", async ({ browser }) => {
+    const owner = await as(browser, "owner");
+    const op = await owner.newPage();
+    const id = await createEmployee(op, "Noupload");
+    const ctx = await as(browser, "hrstaff");
+    const page = await ctx.newPage();
+    await page.goto("/dashboard");
+    const res = await page.request.put(`/api/employees/${id}/photo`, {
+      data: (await photoFile()).buffer,
+      headers: { "Content-Type": "image/png", Origin: new URL(page.url()).origin },
+    });
+    expect(res.status()).toBe(403);
+    await ctx.close();
+    await owner.close();
+  });
+});
+
+test.describe("interactive dashboard", () => {
+  test("KPI cards filter the directory in place and highlight the selection", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    await page.goto("/dashboard");
+    const activeCard = page.getByRole("button", { name: /^Active/ });
+    const activeCount = Number((await page.getByTestId("stat-active").filter({ visible: true }).textContent())!.replace(/\D/g, ""));
+    await activeCard.click();
+    await expect(page).toHaveURL(/status=ACTIVE/);
+    await expect(activeCard).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText(`of ${activeCount.toLocaleString("en-IN")} employees`)).toBeVisible();
+    const badges = await page.getByTestId("employee-row").getByText(/^(Active|Inactive)$/).allTextContents();
+    expect(badges.length).toBeGreaterThan(0);
+    expect(new Set(badges)).toEqual(new Set(["Active"]));
+
+    // Another card replaces the filter instead of stacking with it.
+    await page.getByRole("button", { name: /^Expiring Soon/ }).click();
+    await expect(page).toHaveURL(/expiry=EXPIRING_SOON/);
+    await expect(page).not.toHaveURL(/status=/);
+    // Combine with search, then clear everything.
+    await page.getByLabel("Search by name or employee ID").fill("Testcase");
+    await expect(page).toHaveURL(/q=Testcase/);
+    await expect(page).toHaveURL(/expiry=EXPIRING_SOON/);
+    await page.getByRole("button", { name: "Clear all filters" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByRole("button", { name: /^Total Employees/ })).toHaveAttribute("aria-pressed", "true");
+    await ctx.close();
+  });
+
+  test("bulk import accepts a CSV and skips rows already imported", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    await page.goto("/employees/import");
+    const csv = { name: "staff.csv", mimeType: "text/csv", buffer: Buffer.from("firstName,lastName,department,jobTitle\r\nImport,Onecase,Ops,Lead\r\nImport,Twocase,Ops,Lead\r\n") };
+    await page.locator("#csv").filter({ visible: true }).setInputFiles(csv);
+    await page.getByRole("button", { name: "Validate and import" }).click();
+    const result = page.getByRole("status").filter({ hasText: "Import complete" });
+    await expect(result).toContainText("2 created");
+    await page.locator("#csv").filter({ visible: true }).setInputFiles(csv);
+    await page.getByRole("button", { name: "Validate and import" }).click();
+    await expect(result).toContainText("0 created · 2 skipped");
+    await ctx.close();
+  });
+
+  test("collapsible sidebar remembers its state; notifications show real activity", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    await page.goto("/dashboard");
+    await expect(page.getByTestId("live-indicator")).toHaveAttribute("data-state", "live"); // hydrated
+    await page.getByRole("button", { name: "Collapse sidebar" }).click();
+    await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
+    await page.getByRole("button", { name: "Expand sidebar" }).click();
+    await page.getByRole("button", { name: /^Notifications/ }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu.getByText("Recent activity")).toBeVisible();
+    await expect(menu.locator("li").first()).not.toHaveText(/Loading|No activity yet/);
+    await ctx.close();
   });
 });

@@ -25,6 +25,24 @@ export function renderQrSvg(url: string): Promise<string> {
   });
 }
 
+export interface QrPath {
+  /** Modules per side (the path is drawn in a size×size coordinate box). */
+  size: number;
+  /** SVG path data with one unit square per dark module. */
+  d: string;
+}
+
+/** QR as raw SVG path data, for composing into the ID card SVG (screen, print, PNG and PDF). */
+export function renderQrPath(url: string): QrPath {
+  const qr = QRCode.create(url, { errorCorrectionLevel: "M" });
+  const { size, data } = qr.modules;
+  let d = "";
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) if (data[y * size + x]) d += `M${x} ${y}h1v1h-1z`;
+  }
+  return { size, d };
+}
+
 /**
  * Issues a new credential for an employee, revoking any live one in the same
  * transaction (reissue). Never changes the employee's employment status.
@@ -110,5 +128,6 @@ export async function getCredentialPreview(db: Db, actor: Actor, employeeId: str
     state: credentialState(cred),
     url,
     qrSvg: await renderQrSvg(url),
+    qrPath: renderQrPath(url),
   };
 }

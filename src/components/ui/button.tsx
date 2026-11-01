@@ -6,11 +6,11 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "success";
 type Size = "sm" | "md";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55 whitespace-nowrap";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-55 disabled:active:scale-100 whitespace-nowrap";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-primary-600 text-white hover:bg-primary-700 shadow-sm",
-  secondary: "bg-white text-ink border border-border-strong hover:bg-navy-100/60",
+  primary: "bg-gradient-to-b from-primary-500 to-primary-600 text-white shadow-sm shadow-primary-600/25 hover:from-primary-600 hover:to-primary-700 hover:shadow-md hover:shadow-primary-600/25",
+  secondary: "bg-white text-ink border border-border-strong shadow-xs hover:bg-navy-100/50 hover:border-navy-700/25",
   ghost: "text-ink-muted hover:bg-navy-100/70 hover:text-ink",
   danger: "bg-white text-danger-700 border border-danger-600/40 hover:bg-danger-50",
   success: "bg-white text-success-700 border border-success-700/40 hover:bg-success-50",

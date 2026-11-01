@@ -13,6 +13,7 @@ export const settingsUpdateSchema = z
     publicShowJobTitle: z.boolean(),
     publicShowBusinessVertical: z.boolean(),
     publicShowWorkLocation: z.boolean(),
+    publicShowPhoto: z.boolean(),
     auditRetentionDays: z.coerce.number().int().min(90).max(3650),
     verificationRetentionDays: z.coerce.number().int().min(7).max(730),
     requireMfaForPrivileged: z.boolean(),

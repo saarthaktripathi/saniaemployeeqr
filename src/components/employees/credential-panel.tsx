@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Copy, ExternalLink, Printer, QrCode, RefreshCw, ShieldX } from "lucide-react";
+import { Copy, ExternalLink, IdCard, QrCode, RefreshCw, ShieldX } from "lucide-react";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api-client";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -150,7 +150,7 @@ export function CredentialPanel({
                 <Copy className="size-4" aria-hidden /> Copy URL
               </Button>
               <ButtonLink href={`/employees/${employeeId}/id-card`} variant="secondary" size="sm">
-                <Printer className="size-4" aria-hidden /> Print ID
+                <IdCard className="size-4" aria-hidden /> ID card
               </ButtonLink>
               <a href={preview.url} target="_blank" rel="noreferrer noopener" className="col-span-2 inline-flex h-8 items-center justify-center gap-2 rounded-lg text-sm font-medium text-primary-600 hover:bg-primary-50">
                 <ExternalLink className="size-4" aria-hidden /> Open public verification page

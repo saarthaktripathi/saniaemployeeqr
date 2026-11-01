@@ -6,6 +6,7 @@ import { enforceRateLimit, RATE_RULES } from "@/server/security/rate-limit";
 import { logger } from "@/server/logging/logger";
 import type { RequestContext } from "./context";
 import { getSettings } from "./settings";
+import { photoDataUrl } from "./photos";
 
 export interface PublicEmployeeView {
   displayName: string;
@@ -17,6 +18,8 @@ export interface PublicEmployeeView {
   employmentStatus: "ACTIVE" | "INACTIVE";
   idIssueDate: string;
   idExpiresAt: string;
+  /** Inline image (data URL) when a photo exists and System Rules allow showing it. */
+  photo: string | null;
 }
 
 export interface VerificationView {
@@ -64,6 +67,7 @@ export async function verifyToken(db: Db, token: string, ctx: RequestContext, no
                 workLocation: true,
                 employmentStatus: true,
                 archivedAt: true,
+                photoKey: true,
                 idIssueDate: true,
                 idExpiresAt: true,
               },
@@ -82,6 +86,7 @@ export async function verifyToken(db: Db, token: string, ctx: RequestContext, no
 
     // A revoked credential only confirms whose card it was, not their details.
     const minimal = status === "REVOKED";
+    const photo = !minimal && settings.publicShowPhoto ? await photoDataUrl(db, employee.photoKey) : null;
     return {
       ...base,
       company,
@@ -97,6 +102,7 @@ export async function verifyToken(db: Db, token: string, ctx: RequestContext, no
         employmentStatus: employee.archivedAt ? "INACTIVE" : employee.employmentStatus,
         idIssueDate: employee.idIssueDate.toISOString().slice(0, 10),
         idExpiresAt: employee.idExpiresAt.toISOString().slice(0, 10),
+        photo,
       },
     };
   } catch (err) {

@@ -19,6 +19,7 @@ export interface SettingsValues {
   publicShowJobTitle: boolean;
   publicShowBusinessVertical: boolean;
   publicShowWorkLocation: boolean;
+  publicShowPhoto: boolean;
   auditRetentionDays: number;
   verificationRetentionDays: number;
   requireMfaForPrivileged: boolean;
@@ -101,6 +102,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
               <Checkbox label="Job title" checked={v.publicShowJobTitle} onChange={(e) => set("publicShowJobTitle", e.target.checked)} />
               <Checkbox label="Business vertical" checked={v.publicShowBusinessVertical} onChange={(e) => set("publicShowBusinessVertical", e.target.checked)} />
               <Checkbox label="Work location" checked={v.publicShowWorkLocation} onChange={(e) => set("publicShowWorkLocation", e.target.checked)} />
+              <Checkbox label="Employee photo" checked={v.publicShowPhoto} onChange={(e) => set("publicShowPhoto", e.target.checked)} />
             </div>
           </fieldset>
         </div>

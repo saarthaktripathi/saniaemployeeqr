@@ -21,7 +21,7 @@ export default async function ImportPage() {
       <PageHeader
         eyebrow="Employee records"
         title="Bulk import"
-        description="Create up to 500 employees from a CSV file. Every row is validated first — if any row has a problem, nothing is imported."
+        description="Create up to 500 employees from a CSV or Excel file. Every row is validated first — if any row has a problem, nothing is imported. Duplicates can be skipped or cleaned up below."
       />
       <div className="space-y-5">
         <ImportForm />

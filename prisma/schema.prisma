@@ -151,6 +151,10 @@ model Employee {
   idIssueDate      DateTime         @db.Date
   idExpiresAt      DateTime         @db.Date
   archivedAt       DateTime?
+  /// Storage reference for the profile photo (e.g. "db:<employeeId>"); null when there is none.
+  photoKey         String?
+  /// Changes on every photo upload; used to bust caches.
+  photoUpdatedAt   DateTime?
   /// Optimistic concurrency token; incremented on every update.
   version          Int              @default(1)
   createdAt        DateTime         @default(now())
@@ -162,6 +166,7 @@ model Employee {
 
   credentials        EmployeeCredential[]
   verificationEvents VerificationEvent[]
+  photo              EmployeePhoto?
 
   @@index([employmentStatus])
   @@index([department])
@@ -170,6 +175,21 @@ model Employee {
   @@index([createdAt, id])
   @@index([displayName])
   @@map("employee")
+}
+
+/// Profile photo bytes, kept out of the employee row so directory queries stay small.
+/// Images are re-encoded server-side (WebP, metadata stripped). Accessed via the photo storage interface.
+model EmployeePhoto {
+  employeeId  String   @id @db.Uuid
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  contentType String
+  /// 512x512 card/profile image
+  data        Bytes
+  /// 96x96 thumbnail for tables and avatars
+  thumb       Bytes
+  updatedAt   DateTime @updatedAt
+
+  @@map("employee_photo")
 }
 
 /// Per-prefix, per-year counter used to allocate employee codes atomically.
@@ -289,6 +309,7 @@ model CompanySettings {
   publicShowBusinessVertical Boolean @default(true)
   publicShowWorkLocation    Boolean  @default(true)
   publicShowDepartment      Boolean  @default(true)
+  publicShowPhoto           Boolean  @default(true)
   auditRetentionDays        Int      @default(730)
   verificationRetentionDays Int      @default(90)
   requireMfaForPrivileged   Boolean  @default(true)

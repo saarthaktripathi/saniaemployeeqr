@@ -89,6 +89,8 @@ const listSelect = {
   idExpiresAt: true,
   archivedAt: true,
   updatedAt: true,
+  photoKey: true,
+  photoUpdatedAt: true,
   credentials: {
     where: { revokedAt: null },
     select: { id: true, expiresAt: true, revokedAt: true },
@@ -230,6 +232,7 @@ async function createInTx(tx: Tx, actor: Actor, input: ReturnType<typeof employe
       businessVertical: input.businessVertical,
       workLocation: input.workLocation,
       joiningDate: input.joiningDate,
+      employmentStatus: input.employmentStatus,
       idIssueDate: issue,
       idExpiresAt: expires,
       createdById: actor.id,
@@ -552,6 +555,7 @@ const IMPORT_COLUMNS = [
   "joiningDate",
   "idIssueDate",
   "idExpiresAt",
+  "employmentStatus",
 ] as const;
 
 export interface ImportRowError {

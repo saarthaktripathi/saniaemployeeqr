@@ -1,15 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useCallback, useRef, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api-client";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/form";
+import { Field, Input, Select } from "@/components/ui/form";
 import { Card, CardHeader } from "@/components/ui/primitives";
 import { employeeCreateSchema, employeeEditFormSchema } from "@/features/employees/schema";
+import { deleteEmployeePhoto, PhotoUpload, uploadEmployeePhoto, type PhotoChange } from "./photo-upload";
 
 export interface EmployeeFormValues {
   firstName: string;
@@ -24,6 +26,8 @@ export interface EmployeeFormValues {
   joiningDate: string;
   idIssueDate: string;
   idExpiresAt: string;
+  /** Create only: initial employment status. */
+  employmentStatus: "ACTIVE" | "INACTIVE";
 }
 
 const empty: EmployeeFormValues = {
@@ -39,17 +43,37 @@ const empty: EmployeeFormValues = {
   joiningDate: "",
   idIssueDate: "",
   idExpiresAt: "",
+  employmentStatus: "ACTIVE",
 };
 
 type Mode = { kind: "create" } | { kind: "edit"; id: string; version: number };
 
-export function EmployeeForm({ mode, initial, departments, defaultValidityDays }: { mode: Mode; initial?: Partial<EmployeeFormValues>; departments: string[]; defaultValidityDays: number }) {
+export function EmployeeForm({
+  mode,
+  initial,
+  departments,
+  defaultValidityDays,
+  photoUrl = null,
+}: {
+  mode: Mode;
+  initial?: Partial<EmployeeFormValues>;
+  departments: string[];
+  defaultValidityDays: number;
+  /** Current photo (edit mode). */
+  photoUrl?: string | null;
+}) {
   const router = useRouter();
+  const photo = useRef<PhotoChange>({ kind: "keep" });
+  const onPhotoChange = useCallback((c: PhotoChange) => {
+    photo.current = c;
+  }, []);
+  const [progress, setProgress] = useState<number | null>(null);
   const schema = mode.kind === "create" ? employeeCreateSchema : employeeEditFormSchema;
   const {
     register,
     handleSubmit,
     getValues,
+    control,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<EmployeeFormValues>({
@@ -59,20 +83,24 @@ export function EmployeeForm({ mode, initial, departments, defaultValidityDays }
     mode: "onBlur",
   });
 
-  const onSubmit = handleSubmit(async () => {
+  const submit = async () => {
     // Send the raw string values: handleSubmit receives the schema's transformed output
     // (e.g. Date objects), which the server's YYYY-MM-DD validation would reject.
-    const values = getValues();
+    const { employmentStatus, ...values } = getValues();
     try {
+      let id: string;
       if (mode.kind === "create") {
-        const { employee } = await api<{ employee: { id: string; employeeCode: string } }>("/api/employees", { body: values });
+        const { employee } = await api<{ employee: { id: string; employeeCode: string } }>("/api/employees", { body: { ...values, employmentStatus } });
+        id = employee.id;
         toast.success(`Employee created — ${employee.employeeCode}`);
-        router.push(`/employees/${employee.id}`);
       } else {
-        await api(`/api/employees/${mode.id}`, { method: "PATCH", body: { ...values, version: mode.version } });
+        id = mode.id;
+        await api(`/api/employees/${id}`, { method: "PATCH", body: { ...values, version: mode.version } });
         toast.success("Changes saved");
-        router.push(`/employees/${mode.id}`);
       }
+      // The record is saved first; a photo failure never loses the employee data.
+      await savePhoto(id);
+      router.push(`/employees/${id}`);
       router.refresh();
     } catch (e) {
       if (e instanceof ApiError) {
@@ -84,7 +112,29 @@ export function EmployeeForm({ mode, initial, departments, defaultValidityDays }
         toast.error(e.message);
       } else toast.error("Could not save. Check your connection and try again.");
     }
-  });
+  };
+  // handleSubmit is invoked inside the event handler (it reads refs, which must not happen during render).
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => handleSubmit(submit)(e);
+
+  const nameParts = useWatch({ control, name: ["firstName", "lastName"] });
+
+  async function savePhoto(id: string) {
+    const change = photo.current;
+    try {
+      if (change.kind === "set") {
+        setProgress(0);
+        await uploadEmployeePhoto(id, await change.render(), setProgress);
+        toast.success("Photo saved");
+      } else if (change.kind === "remove") {
+        await deleteEmployeePhoto(id);
+        toast.success("Photo removed");
+      }
+    } catch (e) {
+      toast.error(`${e instanceof Error ? e.message : "Photo upload failed"}. The employee was saved — try the photo again from Edit.`);
+    } finally {
+      setProgress(null);
+    }
+  }
 
   const f = (name: keyof EmployeeFormValues) => ({
     id: name,
@@ -96,8 +146,16 @@ export function EmployeeForm({ mode, initial, departments, defaultValidityDays }
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
       <Card>
-        <CardHeader eyebrow="Profile" title="Personal details" description="Name as it should appear on the employee ID." />
-        <div className="grid gap-4 p-5 sm:grid-cols-2">
+        <CardHeader eyebrow="Profile" title="Photo & personal details" description="The photo and name appear on the digital employee ID card and the verification page." />
+        <div className="grid gap-6 p-5 md:grid-cols-[260px_1fr]">
+          <PhotoUpload
+            name={nameParts.filter(Boolean).join(" ")}
+            existingUrl={photoUrl}
+            onChange={onPhotoChange}
+            disabled={isSubmitting}
+            progress={progress}
+          />
+        <div className="grid content-start gap-4 sm:grid-cols-2">
           <Field label="First name" htmlFor="firstName" required error={errors.firstName?.message}>
             <Input {...f("firstName")} autoComplete="off" />
           </Field>
@@ -113,6 +171,7 @@ export function EmployeeForm({ mode, initial, departments, defaultValidityDays }
           <Field label="Phone" htmlFor="phone" error={errors.phone?.message} hint="Optional. Private — never shown publicly.">
             <Input type="tel" {...f("phone")} autoComplete="off" />
           </Field>
+        </div>
         </div>
       </Card>
 
@@ -139,6 +198,14 @@ export function EmployeeForm({ mode, initial, departments, defaultValidityDays }
           <Field label="Joining date" htmlFor="joiningDate" error={errors.joiningDate?.message}>
             <Input type="date" {...f("joiningDate")} />
           </Field>
+          {mode.kind === "create" && (
+            <Field label="Employment status" htmlFor="employmentStatus" hint="Later changes use Deactivate / Reactivate, which are audited.">
+              <Select {...f("employmentStatus")}>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+              </Select>
+            </Field>
+          )}
         </div>
       </Card>
 
@@ -158,7 +225,7 @@ export function EmployeeForm({ mode, initial, departments, defaultValidityDays }
         <ButtonLink href={mode.kind === "edit" ? `/employees/${mode.id}` : "/dashboard"} variant="secondary">
           Cancel
         </ButtonLink>
-        <Button type="submit" loading={isSubmitting}>
+        <Button type="submit" loading={isSubmitting || progress !== null}>
           {mode.kind === "create" ? "Create employee" : "Save changes"}
         </Button>
       </div>

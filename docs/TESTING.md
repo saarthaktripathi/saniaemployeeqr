@@ -19,12 +19,12 @@ Run: `npm run db:start` (separate terminal), then `npm test`, `npm run test:cove
 | --- | --- |
 | `npm run lint` | 0 errors, 0 warnings |
 | `npm run typecheck` | pass |
-| Vitest | **107 / 107 passed** (10 files) |
+| Vitest | **122 / 122 passed** (12 files) |
 | Coverage (all server/feature/lib code) | Statements 83.2%, Branches 73.9%, Functions 80.1%, Lines 87.1% |
 | Coverage — services | Lines 88–100% per file (employees 95.5, credentials 100, audit 100, verification 80, users 90.6) |
 | Coverage — permissions / rate limiting | 100% lines |
 | `npm run build` | pass (all routes dynamic) |
-| Playwright | **18 / 18 passed** |
+| Playwright | **24 / 24 passed** (incl. photo upload + crop, ID card PNG/PDF download, mobile verification, KPI filters, import duplicates, sidebar, notifications) |
 | `npm audit --omit=dev` | 0 vulnerabilities |
 | Migration drift (`prisma migrate diff`) | no difference |
 

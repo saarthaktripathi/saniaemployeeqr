@@ -18,7 +18,7 @@ export function CardHeader({ title, description, actions, eyebrow }: { title: Re
   );
 }
 
-type Tone = "success" | "danger" | "warning" | "neutral" | "info" | "teal";
+type Tone = "success" | "danger" | "warning" | "neutral" | "info" | "teal" | "orange" | "violet";
 
 const tones: Record<Tone, string> = {
   success: "bg-success-50 text-success-700 ring-success-700/20",
@@ -27,6 +27,8 @@ const tones: Record<Tone, string> = {
   neutral: "bg-navy-100/70 text-ink-muted ring-ink-muted/15",
   info: "bg-primary-50 text-primary-700 ring-primary-700/20",
   teal: "bg-teal-50 text-teal-700 ring-teal-700/20",
+  orange: "bg-orange-50 text-orange-700 ring-orange-700/20",
+  violet: "bg-violet-50 text-violet-600 ring-violet-600/20",
 };
 
 export function Badge({ tone = "neutral", children, className, dot = true }: { tone?: Tone; children: ReactNode; className?: string; dot?: boolean }) {
@@ -64,13 +66,21 @@ export function Alert({ tone = "info", title, children }: { tone?: Tone; title?:
   );
 }
 
-export function PageHeader({ eyebrow, title, description, actions }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode }) {
+/** Page title block. `hero` adds the soft gradient panel used on primary pages. */
+export function PageHeader({ eyebrow, title, description, actions, hero, badges }: { eyebrow?: string; title: string; description?: string; actions?: ReactNode; hero?: boolean; badges?: ReactNode }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        {eyebrow && <p className="text-xs font-semibold tracking-wider text-teal-700 uppercase">{eyebrow}</p>}
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">{title}</h1>
+    <div
+      className={cn(
+        "animate-fade mb-6 flex flex-wrap items-end justify-between gap-4",
+        hero &&
+          "relative overflow-hidden rounded-[var(--radius-card)] border border-primary-100 bg-[radial-gradient(120%_140%_at_0%_0%,#eef2ff_0%,#f3efff_38%,#e6f7fb_72%,#ffffff_100%)] px-5 py-5 sm:px-6",
+      )}
+    >
+      <div className="min-w-0">
+        {eyebrow && <p className="text-xs font-semibold tracking-wider text-violet-600 uppercase">{eyebrow}</p>}
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink sm:text-[26px]">{title}</h1>
         {description && <p className="mt-1 max-w-2xl text-sm text-ink-muted">{description}</p>}
+        {badges && <div className="mt-3 flex flex-wrap items-center gap-2">{badges}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>

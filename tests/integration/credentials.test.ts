@@ -76,7 +76,7 @@ describe("public verification", () => {
     const v = await verifyToken(db, token, fresh());
     expect(v.status).toBe("VERIFIED");
     expect(Object.keys(v.employee!).sort()).toEqual(
-      ["businessVertical", "department", "displayName", "employeeCode", "employmentStatus", "idExpiresAt", "idIssueDate", "jobTitle", "workLocation"].sort(),
+      ["businessVertical", "department", "displayName", "employeeCode", "employmentStatus", "idExpiresAt", "idIssueDate", "jobTitle", "photo", "workLocation"].sort(),
     );
     const json = JSON.stringify(v);
     for (const secret of [e.id, "asha@example.com", "90000", token]) expect(json).not.toContain(secret);
