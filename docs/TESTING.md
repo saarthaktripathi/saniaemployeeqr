@@ -19,7 +19,7 @@ Run: `npm run db:start` (separate terminal), then `npm test`, `npm run test:cove
 | --- | --- |
 | `npm run lint` | 0 errors, 0 warnings |
 | `npm run typecheck` | pass |
-| Vitest | **100 / 100 passed** (9 files) |
+| Vitest | **107 / 107 passed** (10 files) |
 | Coverage (all server/feature/lib code) | Statements 83.2%, Branches 73.9%, Functions 80.1%, Lines 87.1% |
 | Coverage — services | Lines 88–100% per file (employees 95.5, credentials 100, audit 100, verification 80, users 90.6) |
 | Coverage — permissions / rate limiting | 100% lines |

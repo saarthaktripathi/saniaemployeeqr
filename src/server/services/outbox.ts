@@ -11,6 +11,7 @@ export type RealtimeEventType =
   | "employee.created"
   | "employee.updated"
   | "employee.status_changed"
+  | "employee.deleted"
   | "credential.issued"
   | "credential.revoked"
   | "dashboard.changed"

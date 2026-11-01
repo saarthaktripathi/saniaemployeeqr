@@ -80,6 +80,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                     deactivate: can(actor, "employee:deactivate"),
                     reactivate: can(actor, "employee:reactivate"),
                     archive: can(actor, "employee:archive"),
+                    delete: can(actor, "employee:delete"),
                   }}
                 />
               }

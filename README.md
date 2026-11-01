@@ -8,7 +8,8 @@ A full-stack web application for managing employee records and issuing a unique,
 
 | Area | What it does |
 | --- | --- |
-| HR dashboard | Directory with server-side search, filters, sort and pagination; add/edit; deactivate/reactivate/archive; bulk status changes; CSV import/export; live updates across sessions |
+| HR dashboard | Directory with server-side search, filters, sort and pagination; add/edit; deactivate/reactivate/archive; **delete (single or bulk)**; bulk status changes; CSV import/export; live updates across sessions |
+| Duplicate cleanup | Import can skip employees that already exist; the Import page lists duplicate records (e.g. a CSV uploaded twice) and removes the extra copies in one click, keeping one per person |
 | QR credentials | Issue, preview, copy, print, reissue and revoke. Each QR holds only an opaque 256-bit token |
 | Public verification | `/verify/<token>` shows company-approved fields and an explicit state: Verified — Active, Inactive, ID expired, Credential expired, Revoked, Invalid, or Unavailable |
 | Access control | Owner / HR Administrator / HR Staff roles plus individually grantable permissions, enforced on the server |
@@ -29,9 +30,22 @@ npm run dev                 # http://localhost:3000
 
 The seed prints three **local-only** accounts (Owner, HR Admin, HR Staff) with random passwords. MFA enforcement is switched off in the local seed only; turn it on under **System Rules**.
 
+## Removing employees
+
+Owners and HR Administrators (permission `employee:delete`) can permanently delete employee records:
+
+- **Directory (Dashboard):** the trash icon on a row deletes that employee. Tick several rows (or the header checkbox for the whole page) and use **Delete** in the bulk bar to remove many at once.
+- **Employee profile:** **Delete** next to the status actions.
+- **Bulk import page → Duplicate employees:** if the same CSV was uploaded twice, matching records are grouped here. **Remove N duplicates** deletes every extra copy in one step (up to 1,000 per click) and keeps one record per person — the one with a QR credential, otherwise the oldest. Each group also has its own **Remove copy** button.
+- **Prevent duplicates:** the import form's **Skip employees that already exist** option (on by default) ignores rows that match an existing record or an earlier row in the same file.
+
+Deletion asks for a reason, is all-or-nothing, removes the employee's QR credentials (printed QRs then show *Invalid*) and is recorded in the append-only audit log. It cannot be undone — use **Archive** if the record may be needed later. Records match as duplicates when name, department, job title, business vertical, location, joining date, phone and work email are all equal (ignoring case and extra spaces).
+
+API: `POST /api/employees/delete` with `{ "ids": [...], "reason": "..." }`; `GET /api/employees/duplicates`; `POST /api/employees/import?skipDuplicates=1`.
+
 ### Logo
 
-Put the official logo at `public/branding/sania-job-bowl-logo.png`. It is picked up automatically (restart the server); until then a neutral placeholder is shown.
+Put the logo at `public/branding/sania-job-bowl-logo.png` (PNG, square, ideally 256×256 or larger, transparent background). It is picked up automatically (restart the server, or commit and push to redeploy); until then a neutral placeholder is shown. To change the browser-tab icon too, replace `src/app/favicon.ico` (or add `src/app/icon.png`).
 
 ## Scripts
 
@@ -57,7 +71,8 @@ On Windows with little space on C:, set `PLAYWRIGHT_BROWSERS_PATH=D:\ms-playwrig
 - [Security](docs/SECURITY.md) — threat model, mitigations, residual risks
 - [Testing](docs/TESTING.md) — test strategy, results, measured load figures, implementation checklist
 - [Deployment](docs/DEPLOYMENT.md) — hosting comparison, recommended plan, domain options, runbooks
+- [Project report (PDF)](docs/Project-Report.pdf) — full project overview: features, architecture, security, testing, deployment
 
 ## Status
 
-**Nothing is deployed yet.** Production hosting, the production database and the domain require the owner's explicit approval — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Running as a **free-tier trial**: the app on **Render** (Blueprint in `render.yaml`) and PostgreSQL on **Neon**. Every push to `main` redeploys automatically; migrations run on start (`npm run start:prod`). Paid hosting and a custom domain still require the owner's approval — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).

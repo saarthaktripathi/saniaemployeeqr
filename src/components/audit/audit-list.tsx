@@ -11,6 +11,8 @@ const LABELS: Record<string, string> = {
   "employee.archived": "Employee archived",
   "employee.unarchived": "Employee unarchived",
   "employee.bulk_status": "Bulk status change",
+  "employee.deleted": "Employee deleted",
+  "employee.bulk_deleted": "Bulk delete",
   "employee.imported": "Bulk import",
   "employee.exported": "Directory exported",
   "credential.issued": "QR credential issued",

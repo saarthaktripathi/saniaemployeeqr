@@ -88,3 +88,13 @@ export const bulkStatusSchema = z
   .strict();
 
 export const revokeSchema = z.object({ reason: text(300, 1) }).strict();
+
+/** Permanent deletion (single, bulk or duplicate cleanup). Larger cap than status changes so a whole duplicated import can be removed at once. */
+export const DELETE_LIMIT = 1000;
+
+export const deleteEmployeesSchema = z
+  .object({
+    ids: z.array(z.string().uuid()).min(1).max(DELETE_LIMIT),
+    reason: text(300, 1),
+  })
+  .strict();

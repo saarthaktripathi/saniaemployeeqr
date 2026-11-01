@@ -44,6 +44,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     deactivate: can(actor, "employee:deactivate"),
     reactivate: can(actor, "employee:reactivate"),
     archive: can(actor, "employee:archive"),
+    delete: can(actor, "employee:delete"),
     credentialRead: can(actor, "credential:read"),
   };
   const exportQs = new URLSearchParams(flat as Record<string, string>);

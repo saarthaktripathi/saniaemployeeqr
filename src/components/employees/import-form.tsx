@@ -22,7 +22,8 @@ export function ImportForm() {
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [rowErrors, setRowErrors] = useState<RowError[]>([]);
-  const [result, setResult] = useState<{ created: number } | null>(null);
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [result, setResult] = useState<{ created: number; skipped: number } | null>(null);
 
   return (
     <div className="space-y-5">
@@ -54,9 +55,12 @@ export function ImportForm() {
             setRowErrors([]);
             setResult(null);
             try {
-              const res = await api<{ created: number }>("/api/employees/import", { raw: await file.text(), contentType: "text/csv" });
+              const res = await api<{ created: number; skipped: number }>(`/api/employees/import?skipDuplicates=${skipDuplicates ? "1" : "0"}`, {
+                raw: await file.text(),
+                contentType: "text/csv",
+              });
               setResult(res);
-              toast.success(`${res.created} employees imported`);
+              toast.success(`${res.created} employees imported${res.skipped ? `, ${res.skipped} already existed` : ""}`);
               router.refresh();
             } catch (err) {
               if (err instanceof ApiError) {
@@ -75,12 +79,24 @@ export function ImportForm() {
             <span className="text-xs text-ink-subtle">Max 500 rows, 1 MB</span>
             <input id="csv" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </label>
+          <label className="flex items-start gap-2 text-sm text-ink">
+            <input type="checkbox" className="mt-0.5 size-4 accent-primary-600" checked={skipDuplicates} onChange={(e) => setSkipDuplicates(e.target.checked)} />
+            <span>
+              Skip employees that already exist
+              <span className="block text-xs text-ink-subtle">Rows matching an existing record (same name, department, job title, location, joining date, phone and email) are not created again — safe if a file is uploaded twice.</span>
+            </span>
+          </label>
           <Button type="submit" disabled={!file} loading={busy}>
             Validate and import
           </Button>
         </form>
       </Card>
-      {result && <Alert tone="success" title={`${result.created} employees created`}>Each received a new unique employee ID. Issue QR credentials from their profiles.</Alert>}
+      {result && (
+        <Alert tone="success" title={`${result.created} employees created`}>
+          {result.skipped > 0 && `${result.skipped} rows were skipped because those employees already exist. `}
+          Each new employee received a unique employee ID. Issue QR credentials from their profiles.
+        </Alert>
+      )}
       {rowErrors.length > 0 && (
         <Alert tone="danger" title="Fix these rows and upload again">
           <ul className="mt-2 list-disc space-y-1 pl-5">

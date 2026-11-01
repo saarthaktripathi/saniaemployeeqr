@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Pencil, QrCode, UserPlus, Users } from "lucide-react";
+import { Pencil, QrCode, Trash2, UserPlus, Users } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { CredentialBadge, EmploymentBadge, IdValidityBadge } from "./status-badges";
 import { useStatusAction } from "./use-status-action";
+import { useDeleteAction } from "./use-delete-action";
 import { cn, formatDate, initials } from "@/lib/cn";
 import type { CredentialState, IdValidity } from "@/features/employees/rules";
 
@@ -28,13 +29,15 @@ export interface DirectoryPerms {
   deactivate: boolean;
   reactivate: boolean;
   archive: boolean;
+  delete: boolean;
   credentialRead: boolean;
 }
 
 export function DirectoryTable({ rows, perms, total, canCreate }: { rows: DirectoryRow[]; perms: DirectoryPerms; total: number; canCreate: boolean }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const { request, dialog } = useStatusAction(() => setSelected(new Set()));
-  const bulkEnabled = perms.deactivate || perms.reactivate;
+  const del = useDeleteAction({ onDone: () => setSelected(new Set()) });
+  const bulkEnabled = perms.deactivate || perms.reactivate || perms.delete;
   const visibleSelected = rows.filter((r) => selected.has(r.id));
   const allChecked = rows.length > 0 && visibleSelected.length === rows.length;
 
@@ -68,6 +71,7 @@ export function DirectoryTable({ rows, perms, total, canCreate }: { rows: Direct
   return (
     <Card className="overflow-hidden">
       {dialog}
+      {del.dialog}
       {bulkEnabled && visibleSelected.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b border-border bg-primary-50 px-4 py-2 text-sm" role="region" aria-label="Bulk actions">
           <span className="font-medium text-primary-700">{visibleSelected.length} selected</span>
@@ -79,6 +83,11 @@ export function DirectoryTable({ rows, perms, total, canCreate }: { rows: Direct
           {perms.reactivate && (
             <Button size="sm" variant="success" onClick={() => request("reactivate", visibleSelected.filter((r) => r.employmentStatus === "INACTIVE" && !r.archived).map((r) => r.id), `${visibleSelected.filter((r) => r.employmentStatus === "INACTIVE" && !r.archived).length} employees`)} disabled={!visibleSelected.some((r) => r.employmentStatus === "INACTIVE" && !r.archived)}>
               Reactivate
+            </Button>
+          )}
+          {perms.delete && (
+            <Button size="sm" variant="danger" onClick={() => del.request(visibleSelected.map((r) => r.id), visibleSelected.length === 1 ? visibleSelected[0].displayName : `${visibleSelected.length} employees`)}>
+              <Trash2 className="size-3.5" aria-hidden /> Delete
             </Button>
           )}
           <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
@@ -170,6 +179,11 @@ export function DirectoryTable({ rows, perms, total, canCreate }: { rows: Direct
                     {r.archived && perms.archive && (
                       <Button size="sm" variant="secondary" onClick={() => request("unarchive", [r.id], r.displayName)}>
                         Unarchive
+                      </Button>
+                    )}
+                    {perms.delete && (
+                      <Button size="sm" variant="ghost" onClick={() => del.request([r.id], r.displayName)} aria-label={`Delete ${r.displayName}`}>
+                        <Trash2 className="size-3.5 text-danger-700" aria-hidden />
                       </Button>
                     )}
                   </div>

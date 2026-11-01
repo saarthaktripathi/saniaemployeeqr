@@ -44,7 +44,8 @@ Format `PREFIX-YEAR-NNN`, e.g. `SJB-2026-001` (zero-padded to 3 digits, grows to
 - Work email: unique case-insensitively when present (`lower("workEmail")` partial unique index).
 - At most one non-revoked credential per employee (partial unique index).
 - `idExpiresAt >= idIssueDate` (check constraint).
-- Foreign keys: credentials → employee `RESTRICT` (no deleting history); audit/verification → user/employee `SET NULL`.
+- Foreign keys: credentials → employee `RESTRICT` (an employee can't be removed by accident while credentials exist — the delete service removes them explicitly in the same transaction); audit/verification → user/employee `SET NULL`.
+- Duplicate detection (Import page) groups employees whose display name, department, job title, business vertical, work location, joining date, phone and work email match (trimmed, case-insensitive). Imports can skip rows matching an existing record (`?skipDuplicates=1`).
 
 ## Indexes
 
@@ -62,4 +63,4 @@ Collected: name, optional work email and phone (private, never public, never exp
 | Verification events | 90 days |
 | Outbox events | 7 days |
 | Expired sessions / tokens | Removed by the retention job |
-| Employee records | Kept until archived. Hard deletion is intentionally not exposed. Define a legal retention period before adding it |
+| Employee records | Kept until archived or deleted. Permanent deletion (`employee:delete`, Owner and HR Admin) removes the record and its credentials; verification events keep their counts with the employee link set to null, and the append-only audit log keeps an `employee.deleted` entry with the employee code and reason. Codes of deleted employees are never reused |

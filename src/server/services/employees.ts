@@ -5,6 +5,7 @@ import { AppError, conflict, forbidden, notFound } from "@/lib/errors";
 import { can, type Permission } from "@/server/authorization/permissions";
 import {
   bulkStatusSchema,
+  deleteEmployeesSchema,
   employeeCreateSchema,
   employeeListQuerySchema,
   employeeUpdateSchema,
@@ -370,6 +371,112 @@ export async function bulkChangeStatus(db: Db, actor: Actor, rawInput: unknown, 
   return { updated: unique.length };
 }
 
+/**
+ * Permanently deletes employees (one or many) atomically. Their QR credentials are
+ * deleted too, so any printed QR verifies as "Invalid". Verification analytics keep
+ * their counts (the link is set to null). The audit log is append-only and keeps a
+ * record of each deletion with the employee code; codes are never reused.
+ */
+export async function deleteEmployees(db: Db, actor: Actor, rawInput: unknown, ctx: RequestContext) {
+  const { ids, reason } = deleteEmployeesSchema.parse(rawInput);
+  await authorize(db, actor, "employee:delete", ctx);
+  const unique = [...new Set(ids)];
+  const deleted = await db.$transaction(
+    async (tx) => {
+      const found = await tx.employee.findMany({ where: { id: { in: unique } }, select: { id: true, employeeCode: true } });
+      if (found.length !== unique.length) throw notFound("Employee");
+      await tx.employeeCredential.deleteMany({ where: { employeeId: { in: unique } } });
+      await tx.employee.deleteMany({ where: { id: { in: unique } } });
+      for (const e of found) {
+        await recordAudit(tx, ctx, { actor, action: "employee.deleted", targetType: "employee", targetId: e.id, metadata: { employeeCode: e.employeeCode, reason } });
+      }
+      if (found.length > 1) await recordAudit(tx, ctx, { actor, action: "employee.bulk_deleted", metadata: { count: found.length, reason } });
+      await emitEvent(tx, "employee.deleted", {});
+      return found.length;
+    },
+    { timeout: 120_000 },
+  );
+  return { deleted };
+}
+
+export interface DuplicateMember {
+  id: string;
+  employeeCode: string;
+  createdAt: Date;
+  hasCredential: boolean;
+  archived: boolean;
+}
+
+export interface DuplicateGroup {
+  displayName: string;
+  department: string;
+  jobTitle: string;
+  /** Oldest record (or the one with a live QR credential) — suggested to keep. */
+  keep: DuplicateMember;
+  /** The other copies — suggested for removal. */
+  extras: DuplicateMember[];
+}
+
+export const DUPLICATE_GROUP_LIMIT = 500;
+
+/** Identity key for duplicate detection. Must stay in step with duplicateKeyOf(). */
+const DUPLICATE_KEY_SQL = Prisma.sql`concat_ws('|',
+  lower(btrim(e."displayName")), lower(btrim(e."department")), lower(btrim(e."jobTitle")),
+  coalesce(lower(btrim(e."businessVertical")), ''), coalesce(lower(btrim(e."workLocation")), ''),
+  coalesce(e."joiningDate"::text, ''), coalesce(btrim(e."phone"), ''), coalesce(lower(btrim(e."workEmail")), ''))`;
+
+function duplicateKeyOf(input: ReturnType<typeof employeeCreateSchema.parse>): string {
+  const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+  return [
+    norm(displayNameOf(input.firstName, input.lastName, input.displayName)),
+    norm(input.department),
+    norm(input.jobTitle),
+    norm(input.businessVertical),
+    norm(input.workLocation),
+    input.joiningDate ? input.joiningDate.toISOString().slice(0, 10) : "",
+    (input.phone ?? "").trim(),
+    norm(input.workEmail),
+  ].join("|");
+}
+
+/**
+ * Finds employee records that look like the same person entered more than once
+ * (typically the same CSV imported twice). Records match when name, department,
+ * job title, vertical, location, joining date, phone and work email are equal
+ * (case- and whitespace-insensitive). Within each group the record with a live QR
+ * credential is kept, otherwise the oldest.
+ */
+export async function findDuplicateEmployees(db: Db, actor: Actor, ctx: RequestContext) {
+  await authorize(db, actor, "employee:read", ctx);
+  const rows = await db.$queryRaw<
+    { id: string; employeeCode: string; displayName: string; department: string; jobTitle: string; createdAt: Date; archived: boolean; hasCredential: boolean; key: string }[]
+  >`
+    WITH keyed AS (
+      SELECT e."id", e."employeeCode", e."displayName", e."department", e."jobTitle", e."createdAt",
+        e."archivedAt" IS NOT NULL AS "archived",
+        EXISTS (SELECT 1 FROM "employee_credential" c WHERE c."employeeId" = e."id" AND c."revokedAt" IS NULL) AS "hasCredential",
+        ${DUPLICATE_KEY_SQL} AS "key"
+      FROM "employee" e
+    ),
+    grouped AS (
+      SELECT *, count(*) OVER (PARTITION BY "key") AS "n" FROM keyed
+    )
+    SELECT "id"::text, "employeeCode", "displayName", "department", "jobTitle", "createdAt", "archived", "hasCredential", "key"
+    FROM grouped WHERE "n" > 1
+    ORDER BY "key", "hasCredential" DESC, "archived" ASC, "createdAt" ASC, "employeeCode" ASC`;
+
+  // Rows arrive sorted by key with the record to keep first in each group.
+  const byKey = new Map<string, DuplicateGroup>();
+  for (const r of rows) {
+    const member: DuplicateMember = { id: r.id, employeeCode: r.employeeCode, createdAt: r.createdAt, hasCredential: r.hasCredential, archived: r.archived };
+    const group = byKey.get(r.key);
+    if (group) group.extras.push(member);
+    else if (byKey.size < DUPLICATE_GROUP_LIMIT) byKey.set(r.key, { displayName: r.displayName, department: r.department, jobTitle: r.jobTitle, keep: member, extras: [] });
+  }
+  const groups = [...byKey.values()];
+  return { groups, extraCount: groups.reduce((n, g) => n + g.extras.length, 0) };
+}
+
 // ---------------------------------------------------------------------------
 // Import / export
 // ---------------------------------------------------------------------------
@@ -455,8 +562,10 @@ export interface ImportRowError {
 /**
  * Bulk-creates employees from CSV. All rows are validated first; if any row is
  * invalid nothing is written. Valid batches are inserted in a single transaction.
+ * With `skipDuplicates`, rows matching an existing employee (or an earlier row in
+ * the same file) are skipped, so uploading the same file twice creates nothing new.
  */
-export async function importEmployeesCsv(db: Db, actor: Actor, csv: string, ctx: RequestContext) {
+export async function importEmployeesCsv(db: Db, actor: Actor, csv: string, ctx: RequestContext, opts: { skipDuplicates?: boolean } = {}) {
   await authorize(db, actor, "employee:create", ctx);
   const records = parseCsv(csv);
   if (records.length < 2) throw new AppError("VALIDATION", "The CSV must contain a header row and at least one employee");
@@ -487,22 +596,37 @@ export async function importEmployeesCsv(db: Db, actor: Actor, csv: string, ctx:
   });
   if (errors.length) throw new AppError("VALIDATION", "Some rows are invalid; nothing was imported", { rows: errors.slice(0, 50) });
 
+  let toCreate = parsed;
+  if (opts.skipDuplicates) {
+    const names = [...new Set(parsed.map((p) => displayNameOf(p.firstName, p.lastName, p.displayName).trim().toLowerCase()))];
+    const existing = await db.$queryRaw<{ key: string }[]>`
+      SELECT ${DUPLICATE_KEY_SQL} AS "key" FROM "employee" e WHERE lower(btrim(e."displayName")) = ANY(${names})`;
+    const seen = new Set(existing.map((r) => r.key));
+    toCreate = parsed.filter((p) => {
+      const key = duplicateKeyOf(p);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+  const skipped = parsed.length - toCreate.length;
+
   const settings = await getSettings(db);
   try {
     const created = await db.$transaction(
       async (tx) => {
         const now = new Date();
         const out: string[] = [];
-        for (const input of parsed) {
+        for (const input of toCreate) {
           await assertEmailFree(tx, input.workEmail);
           out.push((await createInTx(tx, actor, input, ctx, settings, now)).employeeCode);
         }
-        await recordAudit(tx, ctx, { actor, action: "employee.imported", metadata: { count: out.length } });
+        await recordAudit(tx, ctx, { actor, action: "employee.imported", metadata: { count: out.length, skipped } });
         return out;
       },
       { timeout: 120_000 },
     );
-    return { created: created.length, codes: created };
+    return { created: created.length, skipped, codes: created };
   } catch (e) {
     if (isUniqueViolation(e)) throw conflict("An employee in the file uses a work email that already exists");
     throw e;
