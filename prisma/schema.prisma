@@ -18,6 +18,8 @@ enum UserRole {
   OWNER
   HR_ADMIN
   HR_STAFF
+  /// Read-only leadership access (directory, dashboards, ID cards, activity log).
+  MANAGEMENT
 }
 
 model User {
@@ -41,11 +43,14 @@ model User {
   accounts   Account[]
   twoFactors TwoFactor[]
 
-  employeesCreated Employee[]           @relation("EmployeeCreatedBy")
-  employeesUpdated Employee[]           @relation("EmployeeUpdatedBy")
-  credsIssued      EmployeeCredential[] @relation("CredentialIssuedBy")
-  credsRevoked     EmployeeCredential[] @relation("CredentialRevokedBy")
-  auditEvents      AuditLog[]
+  employeesCreated  Employee[]             @relation("EmployeeCreatedBy")
+  employeesUpdated  Employee[]             @relation("EmployeeUpdatedBy")
+  credsIssued       EmployeeCredential[]   @relation("CredentialIssuedBy")
+  credsRevoked      EmployeeCredential[]   @relation("CredentialRevokedBy")
+  auditEvents       AuditLog[]
+  compensationAdded EmployeeCompensation[] @relation("CompensationCreatedBy")
+  documentsUploaded EmployeeDocument[]     @relation("DocumentUploadedBy")
+  historyRecorded   EmploymentHistory[]    @relation("HistoryCreatedBy")
 
   @@map("user")
 }
@@ -132,41 +137,100 @@ enum EmploymentStatus {
   INACTIVE
 }
 
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  CONSULTANT
+  INTERN
+}
+
+enum WorkMode {
+  OFFICE
+  REMOTE
+  HYBRID
+}
+
+enum ExitType {
+  RESIGNATION
+  TERMINATION
+  CONTRACT_END
+  RETIREMENT
+  OTHER
+}
+
+/// A company of the Sania group. Every employee belongs to exactly one.
+model Company {
+  id        String     @id @default(uuid()) @db.Uuid
+  /// Unique case-insensitively (lower() index in migration).
+  name      String
+  /// Optional short code shown next to the name, e.g. "SJB".
+  code      String?
+  /// Inactive companies keep their employees but cannot receive new ones.
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  employees Employee[]
+
+  @@map("company")
+}
+
 model Employee {
-  id               String           @id @default(uuid()) @db.Uuid
-  /// Human-readable, immutable, never reused. e.g. SJB-2026-001
-  employeeCode     String           @unique
-  firstName        String
-  lastName         String           @default("")
-  displayName      String
+  id                 String           @id @default(uuid()) @db.Uuid
+  /// Human-readable, immutable, never reused. e.g. SJB-2026-001 (one sequence for the whole group)
+  employeeCode       String           @unique
+  firstName          String
+  lastName           String           @default("")
+  displayName        String
   /// Optional; unique (case-insensitive, enforced by the lower() index in migration) when present.
-  workEmail        String?
-  phone            String?
-  department       String
-  jobTitle         String
-  businessVertical String?
-  workLocation     String?
-  joiningDate      DateTime?        @db.Date
-  employmentStatus EmploymentStatus @default(ACTIVE)
-  idIssueDate      DateTime         @db.Date
-  idExpiresAt      DateTime         @db.Date
-  archivedAt       DateTime?
+  workEmail          String?
+  phone              String?
+  companyId          String           @db.Uuid
+  company            Company          @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  department         String
+  /// Designation.
+  jobTitle           String
+  businessVertical   String?
+  employmentType     EmploymentType?
+  workMode           WorkMode?
+  /// Office city / site.
+  workLocation       String?
+  team               String?
+  reportingManagerId String?          @db.Uuid
+  reportingManager   Employee?        @relation("ReportingLine", fields: [reportingManagerId], references: [id], onDelete: SetNull)
+  directReports      Employee[]       @relation("ReportingLine")
+  /// References into external attendance / leave systems (this app does not track attendance).
+  attendanceRef      String?
+  leavePolicy        String?
+  leaveSystemUrl     String?
+  joiningDate        DateTime?        @db.Date
+  employmentStatus   EmploymentStatus @default(ACTIVE)
+  /// Set by "Record exit" (status becomes INACTIVE); cleared when the employee rejoins.
+  exitDate           DateTime?        @db.Date
+  exitType           ExitType?
+  exitReason         String?
+  idIssueDate        DateTime         @db.Date
+  idExpiresAt        DateTime         @db.Date
+  archivedAt         DateTime?
   /// Storage reference for the profile photo (e.g. "db:<employeeId>"); null when there is none.
-  photoKey         String?
+  photoKey           String?
   /// Changes on every photo upload; used to bust caches.
-  photoUpdatedAt   DateTime?
+  photoUpdatedAt     DateTime?
   /// Optimistic concurrency token; incremented on every update.
-  version          Int              @default(1)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  createdById      String?
-  updatedById      String?
-  createdBy        User?            @relation("EmployeeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  updatedBy        User?            @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  version            Int              @default(1)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  createdById        String?
+  updatedById        String?
+  createdBy          User?            @relation("EmployeeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy          User?            @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 
   credentials        EmployeeCredential[]
   verificationEvents VerificationEvent[]
   photo              EmployeePhoto?
+  compensation       EmployeeCompensation[]
+  documents          EmployeeDocument[]
+  history            EmploymentHistory[]
 
   @@index([employmentStatus])
   @@index([department])
@@ -174,7 +238,119 @@ model Employee {
   @@index([archivedAt])
   @@index([createdAt, id])
   @@index([displayName])
+  @@index([companyId])
+  @@index([jobTitle])
+  @@index([reportingManagerId])
   @@map("employee")
+}
+
+enum CompensationType {
+  SALARY
+  STIPEND
+  FEE
+}
+
+enum PayFrequency {
+  ANNUAL
+  MONTHLY
+  HOURLY
+}
+
+/// Salary / stipend / fee revisions. Restricted (compensation:read / compensation:manage);
+/// never exported, never public, values never written to the audit log or real-time events.
+model EmployeeCompensation {
+  id            String           @id @default(uuid()) @db.Uuid
+  employeeId    String           @db.Uuid
+  employee      Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type          CompensationType
+  amount        Decimal          @db.Decimal(14, 2)
+  currency      String           @default("INR")
+  frequency     PayFrequency
+  effectiveFrom DateTime         @db.Date
+  notes         String?
+  createdAt     DateTime         @default(now())
+  createdById   String?
+  createdBy     User?            @relation("CompensationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, effectiveFrom])
+  @@map("employee_compensation")
+}
+
+enum DocumentCategory {
+  OFFER_LETTER
+  APPOINTMENT_LETTER
+  CONTRACT
+  ID_PROOF
+  ADDRESS_PROOF
+  EDUCATION
+  EXPERIENCE
+  RELIEVING_LETTER
+  PAYSLIP
+  OTHER
+}
+
+/// Employee documents and employment records (metadata). Bytes live behind the document
+/// store interface (employee_document_blob today; an object store can replace it).
+model EmployeeDocument {
+  id           String                @id @default(uuid()) @db.Uuid
+  employeeId   String                @db.Uuid
+  employee     Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  category     DocumentCategory
+  title        String
+  fileName     String
+  contentType  String
+  size         Int
+  storageKey   String
+  notes        String?
+  uploadedAt   DateTime              @default(now())
+  uploadedById String?
+  uploadedBy   User?                 @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  blob         EmployeeDocumentBlob?
+
+  @@index([employeeId, uploadedAt])
+  @@map("employee_document")
+}
+
+model EmployeeDocumentBlob {
+  documentId String           @id @db.Uuid
+  document   EmployeeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  data       Bytes
+
+  @@map("employee_document_blob")
+}
+
+enum HistoryKind {
+  JOINED
+  DESIGNATION
+  DEPARTMENT
+  COMPANY
+  MANAGER
+  EMPLOYMENT_TYPE
+  WORK_MODE
+  LOCATION
+  EXITED
+  REJOINED
+  NOTE
+}
+
+/// Employment history timeline. Entries are recorded automatically when job details change,
+/// or added manually (e.g. history from before the system); only manual entries can be removed.
+model EmploymentHistory {
+  id            String      @id @default(uuid()) @db.Uuid
+  employeeId    String      @db.Uuid
+  employee      Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  kind          HistoryKind
+  effectiveDate DateTime    @db.Date
+  fromValue     String?
+  toValue       String?
+  note          String?
+  manual        Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  createdById   String?
+  createdBy     User?       @relation("HistoryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, effectiveDate])
+  @@map("employment_history")
 }
 
 /// Profile photo bytes, kept out of the employee row so directory queries stay small.
@@ -203,21 +379,21 @@ model EmployeeCodeCounter {
 }
 
 model EmployeeCredential {
-  id               String    @id @default(uuid()) @db.Uuid
-  employeeId       String    @db.Uuid
-  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  id              String    @id @default(uuid()) @db.Uuid
+  employeeId      String    @db.Uuid
+  employee        Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   /// SHA-256 of the opaque token — used for lookups. The raw token is never stored in plaintext.
-  tokenHash        String    @unique
+  tokenHash       String    @unique
   /// AES-256-GCM encrypted token so authorized HR can re-display the QR. Null once revoked.
-  tokenCiphertext  String?
-  issuedAt         DateTime  @default(now())
-  expiresAt        DateTime
-  revokedAt        DateTime?
-  revokeReason     String?
-  issuedById       String?
-  revokedById      String?
-  issuedBy         User?     @relation("CredentialIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
-  revokedBy        User?     @relation("CredentialRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
+  tokenCiphertext String?
+  issuedAt        DateTime  @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  revokeReason    String?
+  issuedById      String?
+  revokedById     String?
+  issuedBy        User?     @relation("CredentialIssuedBy", fields: [issuedById], references: [id], onDelete: SetNull)
+  revokedBy       User?     @relation("CredentialRevokedBy", fields: [revokedById], references: [id], onDelete: SetNull)
 
   verificationEvents VerificationEvent[]
 
@@ -297,24 +473,24 @@ model OutboxEvent {
 }
 
 model CompanySettings {
-  id                        Int      @id @default(1)
-  companyName               String   @default("Sania Job Bowl")
-  tagline                   String   @default("Connecting Talent. Creating the Future.")
-  employeeIdPrefix          String   @default("SJB")
-  defaultIdValidityDays     Int      @default(365)
-  credentialValidityDays    Int      @default(365)
-  expiryWarningDays         Int      @default(30)
+  id                         Int      @id @default(1)
+  companyName                String   @default("Sania Job Bowl")
+  tagline                    String   @default("Connecting Talent. Creating the Future.")
+  employeeIdPrefix           String   @default("SJB")
+  defaultIdValidityDays      Int      @default(365)
+  credentialValidityDays     Int      @default(365)
+  expiryWarningDays          Int      @default(30)
   /// Which optional fields the public verification page may show.
-  publicShowJobTitle        Boolean  @default(true)
-  publicShowBusinessVertical Boolean @default(true)
-  publicShowWorkLocation    Boolean  @default(true)
-  publicShowDepartment      Boolean  @default(true)
-  publicShowPhoto           Boolean  @default(true)
-  auditRetentionDays        Int      @default(730)
-  verificationRetentionDays Int      @default(90)
-  requireMfaForPrivileged   Boolean  @default(true)
-  updatedAt                 DateTime @updatedAt
-  updatedById               String?
+  publicShowJobTitle         Boolean  @default(true)
+  publicShowBusinessVertical Boolean  @default(true)
+  publicShowWorkLocation     Boolean  @default(true)
+  publicShowDepartment       Boolean  @default(true)
+  publicShowPhoto            Boolean  @default(true)
+  auditRetentionDays         Int      @default(730)
+  verificationRetentionDays  Int      @default(90)
+  requireMfaForPrivileged    Boolean  @default(true)
+  updatedAt                  DateTime @updatedAt
+  updatedById                String?
 
   @@map("company_settings")
 }

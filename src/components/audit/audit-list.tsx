@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/primitives";
 import { formatDateTime } from "@/lib/cn";
 import type { AuditRow } from "@/server/services/audit-read";
+import { DOCUMENT_CATEGORY_LABELS, EXIT_TYPE_LABELS, type DocumentCategory, type ExitType } from "@/features/employees/labels";
 
 export const AUDIT_LABELS: Record<string, string> = {
   "employee.created": "Employee created",
@@ -17,6 +18,18 @@ export const AUDIT_LABELS: Record<string, string> = {
   "employee.bulk_deleted": "Bulk delete",
   "employee.imported": "Bulk import",
   "employee.exported": "Directory exported",
+  "employee.exited": "Exit recorded",
+  "employee.history_added": "History entry added",
+  "employee.history_removed": "History entry removed",
+  "document.uploaded": "Document uploaded",
+  "document.downloaded": "Document downloaded",
+  "document.deleted": "Document deleted",
+  "compensation.viewed": "Compensation viewed",
+  "compensation.added": "Compensation revision added",
+  "compensation.removed": "Compensation entry removed",
+  "company.created": "Company added",
+  "company.updated": "Company updated",
+  "company.deleted": "Company deleted",
   "credential.issued": "QR credential issued",
   "credential.reissued": "QR credential reissued",
   "credential.revoked": "QR credential revoked",
@@ -37,6 +50,9 @@ function summarize(r: AuditRow): string | null {
   if (typeof m.count === "number") return `${m.count} records`;
   if (typeof m.permission === "string") return `Missing permission: ${m.permission}`;
   if (typeof m.employeeCode === "string") return m.employeeCode;
+  if (typeof m.exitType === "string") return `Exit type: ${EXIT_TYPE_LABELS[m.exitType as ExitType] ?? m.exitType}`;
+  if (typeof m.category === "string") return DOCUMENT_CATEGORY_LABELS[m.category as DocumentCategory] ?? m.category;
+  if (typeof m.name === "string") return m.name;
   return null;
 }
 

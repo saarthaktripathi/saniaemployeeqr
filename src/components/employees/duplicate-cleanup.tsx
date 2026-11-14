@@ -53,7 +53,7 @@ export function DuplicateCleanup({ groups, extraCount }: { groups: DuplicateGrou
       <CardHeader
         eyebrow="Step 3 · Clean up"
         title="Duplicate employees"
-        description="Records with the same name, department, job title, location, joining date, phone and email. In each group the record with a QR credential (or the oldest) is kept."
+        description="Records with the same company, name, department, job title, location, joining date, phone and email. In each group the record with a QR credential (or the oldest) is kept."
         actions={
           extraCount > 0 ? (
             <Button

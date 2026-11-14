@@ -1,6 +1,6 @@
 # Deployment
 
-> **Status: not deployed.** No hosting, database, DNS or domain has been created or purchased. Everything below is a proposal awaiting the owner's approval.
+> **Status: free-tier trial is live** at `https://sania-employees.onrender.com` (Render free web service + Neon free Postgres, see “Free-tier trial deployment” below). No paid hosting, DNS or domain has been purchased; the paid production plan below still awaits the owner's approval.
 
 ## What the app needs from a host
 

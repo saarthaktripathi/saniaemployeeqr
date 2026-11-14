@@ -4,11 +4,12 @@ This document describes what the platform protects, the threats considered, the 
 
 ## Assets
 
-1. Employee personal data (names, work email, phone, job details).
-2. Credential tokens (anyone holding one can see that employee's public status).
-3. HR/owner accounts and sessions (full control of records and credentials).
-4. Audit trail integrity.
-5. Secrets: `BETTER_AUTH_SECRET`, `CREDENTIAL_ENCRYPTION_KEY`, `IP_HASH_SECRET`, database credentials.
+1. Employee personal data (names, work email, phone, job details, reporting lines, exit reasons).
+2. Restricted HR records: compensation (salary/stipend/fee) and uploaded documents (contracts, ID proofs).
+3. Credential tokens (anyone holding one can see that employee's public status).
+4. HR/owner accounts and sessions (full control of records and credentials).
+5. Audit trail integrity.
+6. Secrets: `BETTER_AUTH_SECRET`, `CREDENTIAL_ENCRYPTION_KEY`, `IP_HASH_SECRET`, database credentials.
 
 ## Trust boundaries
 
@@ -38,6 +39,9 @@ This document describes what the platform protects, the threats considered, the 
 | CSV/formula injection | Export cells starting with `= + - @` are prefixed with `'`; phone never exported | Integration test |
 | Malicious image uploads | Photo uploads require `employee:update` (or `employee:create` for records you created); declared type must be JPEG/PNG/WebP; content is decoded by `sharp` with a pixel limit, size ≤ 5 MB, min 128 px; re-encoded to WebP, which drops EXIF/GPS and any embedded payload; served with `nosniff`, `default-src 'none'` CSP and `private` caching | Integration + e2e tests |
 | Photo enumeration | HR photo API needs a session and `employee:read`. The public page never exposes a photo URL — the image is inlined only after the opaque QR token resolves, and only if System Rules allow it | Integration test |
+| Salary disclosure | Separate permissions (`compensation:read` / `compensation:manage`), Owner-only by default and granted per user; holders count as privileged for the MFA policy; values fetched only on an explicit **Show** (not on page render or live refresh), each read audited as a security event (`compensation.viewed`, owner-visible); amounts never written to the audit log, events, exports or public pages; `DECIMAL` storage (no float rounding) | Integration + e2e tests |
+| Malicious document uploads / document leakage | `document:manage` to upload, `document:read` to list/download (Owner + HR Admin; grantable); type decided by magic bytes (PDF/JPEG/PNG/WebP only), ≤ 5 MB streamed limit, file name stripped of paths/control characters with the extension forced to the real type; served as `attachment` (images may be shown inline) with `nosniff`, `Content-Security-Policy: default-src 'none'; sandbox` and `no-store`; metadata sent in a header so names stay out of URLs and access logs; downloads audited | Integration + e2e tests |
+| Reporting-line corruption | Manager must exist, not be archived and not be the employee; recursive check rejects loops; concurrent changes serialised by a transaction-scoped advisory lock | Integration tests |
 | DoS via large/expensive requests | 64 KB JSON / 1 MB CSV body limits; page size ≤ 100; query length ≤ 100; 15 s statement timeout; bulk ≤ 200/500 rows; rate limits on creation, issuance, bulk, export | Unit tests |
 | Audit tampering | DB triggers block UPDATE/DELETE on `audit_log`; purge requires `SET LOCAL app.audit_purge='on'` | Integration tests |
 | Open redirect / SSRF | No user-controlled redirects; no server-side URL fetching | Design |
@@ -49,6 +53,8 @@ This document describes what the platform protects, the threats considered, the 
 - **Client IP comes from `X-Forwarded-For`.** This is correct only behind a reverse proxy that overwrites the header (Render, Railway, Vercel, AWS ALB do). Exposing the Node server directly would let clients spoof IPs and evade per-IP verification limits.
 - **The verification token is in the URL path.** Hosting access logs may record it. Treat platform logs as sensitive, or revoke and reissue a credential if logs leak.
 - **A valid QR proves record status, not identity.** Someone holding another employee's printed ID will verify as that employee. The public page says so; high-assurance uses need a photo ID check.
+- **Documents are not virus-scanned.** Only PDF and image types are accepted (checked by content) and they are always downloaded, never executed by the app, but a PDF could still carry malicious content for the reader's PDF viewer. Add scanning (e.g. ClamAV or the object store's scanning) before accepting files from outside HR.
+- **Compensation and documents live in the same database as everything else** (encrypted at rest by the provider, not by the app). Database administrators can read them; restrict database access accordingly.
 - **MFA is enforced only when "Require MFA" is on** (default on; off in the local demo seed). Recovery for lost authenticators = owner resets the password and the user re-enrols; backup codes are shown once.
 - **No email flows yet** (password reset, verification). Owners reset passwords manually. If email is added, tokens must be single-use and expiring.
 - **`style-src 'unsafe-inline'`** is allowed (toast library, inline style props). Scripts are nonce-locked.
@@ -66,7 +72,7 @@ This document describes what the platform protects, the threats considered, the 
 
 ## What was tested vs not
 
-**Tested automatically:** cross-role access (service + HTTP + UI), direct API bypass, malformed/unknown/expired/revoked tokens, injection-shaped input, oversize bodies, rate limits (verification), CSRF origin checks, unauthenticated SSE, session invalidation on sign-out, audit immutability, data minimization in public responses and events.
+**Tested automatically:** cross-role access (service + HTTP + UI), direct API bypass, malformed/unknown/expired/revoked tokens, injection-shaped input, oversize bodies, rate limits (verification), CSRF origin checks, unauthenticated SSE, session invalidation on sign-out, audit immutability, data minimization in public responses and events, compensation and document permissions per role (service + direct API + UI), compensation amounts absent from audit/events/exports, document type sniffing and file-name sanitising, reporting-loop rejection.
 
 **Not tested:** real-world attacker tooling (DAST/fuzzing), TOTP enrolment via a real authenticator in e2e, multi-instance deployment, behaviour under network partitions, infrastructure configuration of the eventual host.
 

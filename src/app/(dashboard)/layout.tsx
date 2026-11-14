@@ -14,6 +14,7 @@ const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/employees/new", label: "Add Employee", icon: "add", permission: "employee:create" },
   { href: "/employees/import", label: "Bulk Import", icon: "import", permission: "employee:create" },
   { href: "/activity", label: "Activity Log", icon: "activity", permission: "audit:read" },
+  { href: "/companies", label: "Companies", icon: "companies", permission: "company:manage" },
   { href: "/settings", label: "System Rules", icon: "rules", permission: "settings:manage" },
   { href: "/users", label: "Users & Access", icon: "users", permission: "users:manage" },
   { href: "/account/security", label: "Account Security", icon: "security" },

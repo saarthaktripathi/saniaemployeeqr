@@ -4,7 +4,7 @@ import { db } from "@/server/db/client";
 import { requirePageActor } from "@/server/auth/session";
 import { can } from "@/server/authorization/permissions";
 import { getDashboardStats, getDashboardTrends, withLivePoint } from "@/server/services/dashboard";
-import { listDepartments, listEmployees } from "@/server/services/employees";
+import { getEmployee, listDirectoryOptions, listEmployees } from "@/server/services/employees";
 import { credentialState, idValidity } from "@/features/employees/rules";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/primitives";
@@ -24,20 +24,30 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const flat = Object.fromEntries(Object.entries(sp).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]).filter(([, v]) => v !== undefined && v !== ""));
 
   // One round trip each, in parallel; the list query is paginated and indexed in the database.
-  const [stats, trends, result, departments] = await Promise.all([
+  const [stats, trends, result, options] = await Promise.all([
     getDashboardStats(db, actor, ctx),
     getDashboardTrends(db, actor, ctx),
     listEmployees(db, actor, flat, ctx).catch(() => listEmployees(db, actor, {}, ctx)),
-    listDepartments(db, actor, ctx),
+    listDirectoryOptions(db, actor, ctx),
   ]);
+  // "Direct reports of …" filter: show the manager's name in the filter chip.
+  const managerName = result.query.manager
+    ? await getEmployee(db, actor, result.query.manager, ctx).then(
+        (m) => m.displayName,
+        () => null,
+      )
+    : null;
 
   const rows: DirectoryRow[] = result.rows.map((r) => ({
     id: r.id,
     employeeCode: r.employeeCode,
     displayName: r.displayName,
+    company: r.company.name,
     department: r.department,
     jobTitle: r.jobTitle,
+    employmentType: r.employmentType,
     employmentStatus: r.employmentStatus,
+    exited: r.exitDate !== null,
     archived: r.archivedAt !== null,
     idExpiresAt: r.idExpiresAt.toISOString().slice(0, 10),
     idValidity: idValidity(r.idExpiresAt, result.warnDays),
@@ -61,7 +71,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <PageHeader
         eyebrow="HR workspace"
         title="Employee Directory"
-        description="All employee records and their credential status. Figures update live as your team makes changes."
+        description="One directory for every company of the Sania group: people, roles, reporting lines and ID status. Figures update live as your team makes changes."
         art={<TeamIllustration />}
         actions={
           <>
@@ -82,7 +92,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         }
       />
       <KpiCards stats={stats} trends={withLivePoint(trends, stats)} query={result.query} />
-      <DirectoryFilters departments={departments} query={result.query} />
+      <DirectoryFilters options={options} query={result.query} managerName={managerName} />
       <DirectoryTable
         rows={rows}
         perms={perms}

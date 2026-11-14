@@ -1,6 +1,6 @@
 # Testing
 
-All numbers below were **measured on 2026-10-29** on the development machine. Nothing is extrapolated.
+All numbers below were measured on the development machine (load figures on **2026-10-29**; functional suites re-run on **2026-11-14** for the group directory). Nothing is extrapolated.
 
 ## Suites
 
@@ -19,12 +19,12 @@ Run: `npm run db:start` (separate terminal), then `npm test`, `npm run test:cove
 | --- | --- |
 | `npm run lint` | 0 errors, 0 warnings |
 | `npm run typecheck` | pass |
-| Vitest | **122 / 122 passed** (12 files) |
-| Coverage (all server/feature/lib code) | Statements 83.2%, Branches 73.9%, Functions 80.1%, Lines 87.1% |
-| Coverage — services | Lines 88–100% per file (employees 95.5, credentials 100, audit 100, verification 80, users 90.6) |
+| Vitest | **165 / 165 passed** (13 files; incl. 25 group-directory integration tests: companies, reporting lines, exit/rejoin, history, compensation, documents, import/export) |
+| Coverage (all server/feature/lib code) | Statements 89.3%, Branches 79.7%, Functions 87.2%, Lines 92.4% |
+| Coverage — services | Lines 81–100% per file (employees 99.7, companies 97.9, compensation 100, documents 100, history 100, credentials 100, audit 100, verification 81.0, users 90.6) |
 | Coverage — permissions / rate limiting | 100% lines |
 | `npm run build` | pass (all routes dynamic) |
-| Playwright | **24 / 24 passed** (incl. photo upload + crop, ID card PNG/PDF download, mobile verification, KPI filters, import duplicates, sidebar, notifications) |
+| Playwright | **31 / 31 passed** (incl. photo upload + crop, ID card PNG/PDF download, mobile verification, KPI filters, import duplicates, sidebar, notifications; companies, manager picker, company/designation filters, record exit → QR inactive → rejoin, documents upload/download, compensation access, Management role, profile tabs on phones) |
 | `npm audit --omit=dev` | 0 vulnerabilities |
 | Migration drift (`prisma migrate diff`) | no difference |
 
@@ -86,8 +86,9 @@ Raw JSON results: `tests/load/results/load-*.json` (git-ignored; regenerate with
 - [x] System Rules, Users & Access, Account Security pages
 - [x] Security headers/CSP, CSRF, input limits, data minimization
 - [x] Unit, integration, e2e, security-regression, load tests
-- [x] CI workflow (not yet run on GitHub — no remote push made)
-- [ ] Official logo asset (placeholder in use)
-- [ ] Production deployment, domain, backups (awaiting owner approval)
+- [x] CI workflow
+- [x] Official logo asset
+- [x] Free-tier deployment (Render + Neon); custom domain, paid backups awaiting owner approval
+- [x] Group employee directory (companies, Management role, employment details, reporting lines, exit + history, compensation, documents)
 - [ ] Email flows (password reset) — not implemented; owner resets passwords
 - [ ] External penetration test

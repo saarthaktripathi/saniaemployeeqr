@@ -7,7 +7,7 @@ import { PHOTO_MAX_BYTES, PHOTO_MAX_SIDE, PHOTO_MIN_SIDE, PHOTO_SIZE, PHOTO_THUM
 import type { Actor, RequestContext } from "./context";
 import { recordAudit } from "./audit";
 import { emitEvent } from "./outbox";
-import { authorize } from "./employees";
+import { authorize } from "./authorize";
 
 // ---------------------------------------------------------------------------
 // Storage. Photos live in their own table (never in the employee row) behind this

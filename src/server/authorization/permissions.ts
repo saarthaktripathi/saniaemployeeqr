@@ -16,6 +16,11 @@ export const PERMISSIONS = [
   "credential:issue",
   "credential:read",
   "credential:revoke",
+  "document:read",
+  "document:manage",
+  "compensation:read",
+  "compensation:manage",
+  "company:manage",
   "audit:read",
   "audit:read:security",
   "dashboard:read",
@@ -24,12 +29,13 @@ export const PERMISSIONS = [
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
-export type Role = "OWNER" | "HR_ADMIN" | "HR_STAFF";
+export type Role = "OWNER" | "HR_ADMIN" | "HR_STAFF" | "MANAGEMENT";
 
 export const ROLE_LABELS: Record<Role, string> = {
   OWNER: "Owner",
   HR_ADMIN: "HR Administrator",
   HR_STAFF: "HR Staff",
+  MANAGEMENT: "Management",
 };
 
 const HR_ADMIN: Permission[] = [
@@ -44,6 +50,8 @@ const HR_ADMIN: Permission[] = [
   "credential:issue",
   "credential:read",
   "credential:revoke",
+  "document:read",
+  "document:manage",
   "audit:read",
   "dashboard:read",
 ];
@@ -53,6 +61,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   HR_ADMIN,
   // HR staff: read-only by default; owner may grant create/update/credential perms individually.
   HR_STAFF: ["employee:read", "credential:read", "dashboard:read"],
+  // Leadership: read-only view of the whole group. Salary and documents only if granted.
+  MANAGEMENT: ["employee:read", "credential:read", "dashboard:read", "audit:read"],
 };
 
 /** Permissions that may be granted to individual users on top of their role. */
@@ -65,7 +75,37 @@ export const GRANTABLE: Permission[] = [
   "credential:revoke",
   "employee:export",
   "audit:read",
+  "document:read",
+  "document:manage",
+  "compensation:read",
+  "compensation:manage",
+  "company:manage",
 ];
+
+/** Plain-language names for the Users & Access screen. */
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  "employee:read": "View employees",
+  "employee:create": "Add employees",
+  "employee:update": "Edit employees",
+  "employee:deactivate": "Deactivate / record exit",
+  "employee:reactivate": "Reactivate employees",
+  "employee:archive": "Archive employees",
+  "employee:delete": "Delete employees",
+  "employee:export": "Export directory (CSV)",
+  "credential:issue": "Issue QR credentials",
+  "credential:read": "View QR credentials & ID cards",
+  "credential:revoke": "Revoke QR credentials",
+  "document:read": "View employee documents",
+  "document:manage": "Upload / delete documents",
+  "compensation:read": "View salary & compensation",
+  "compensation:manage": "Edit salary & compensation",
+  "company:manage": "Manage group companies",
+  "audit:read": "View activity log",
+  "audit:read:security": "View security activity",
+  "dashboard:read": "View dashboard",
+  "users:manage": "Manage users",
+  "settings:manage": "Manage system rules",
+};
 
 export interface Principal {
   id: string;
@@ -92,4 +132,12 @@ export function can(user: Principal | null | undefined, permission: Permission):
 
 export function isPrivileged(role: Role): boolean {
   return role === "OWNER" || role === "HR_ADMIN";
+}
+
+/** Grants that expose especially sensitive data; holders are treated as privileged for MFA. */
+const SENSITIVE_GRANTS: Permission[] = ["compensation:read", "compensation:manage", "document:read", "document:manage"];
+
+/** Whether the "Require MFA" policy applies: privileged roles, or anyone granted salary/document access. */
+export function requiresMfa(user: Principal): boolean {
+  return isPrivileged(user.role) || SENSITIVE_GRANTS.some((p) => can(user, p));
 }

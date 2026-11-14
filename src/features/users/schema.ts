@@ -2,7 +2,7 @@ import { z } from "zod";
 import { text } from "@/features/shared/schema";
 import { GRANTABLE } from "@/server/authorization/permissions";
 
-export const ROLES = ["OWNER", "HR_ADMIN", "HR_STAFF"] as const;
+export const ROLES = ["OWNER", "HR_ADMIN", "HR_STAFF", "MANAGEMENT"] as const;
 
 export const passwordSchema = z
   .string()

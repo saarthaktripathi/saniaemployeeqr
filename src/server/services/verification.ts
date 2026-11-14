@@ -11,6 +11,8 @@ import { photoDataUrl } from "./photos";
 export interface PublicEmployeeView {
   displayName: string;
   employeeCode: string;
+  /** The group company the employee belongs to (always shown: it is what is being verified). */
+  company: string;
   department: string | null;
   jobTitle: string | null;
   businessVertical: string | null;
@@ -61,6 +63,7 @@ export async function verifyToken(db: Db, token: string, ctx: RequestContext, no
                 id: true,
                 displayName: true,
                 employeeCode: true,
+                company: { select: { name: true } },
                 department: true,
                 jobTitle: true,
                 businessVertical: true,
@@ -95,6 +98,7 @@ export async function verifyToken(db: Db, token: string, ctx: RequestContext, no
       employee: {
         displayName: employee.displayName,
         employeeCode: employee.employeeCode,
+        company: employee.company.name,
         department: !minimal && settings.publicShowDepartment ? employee.department : null,
         jobTitle: !minimal && settings.publicShowJobTitle ? employee.jobTitle : null,
         businessVertical: !minimal && settings.publicShowBusinessVertical ? employee.businessVertical : null,

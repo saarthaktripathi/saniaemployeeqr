@@ -14,6 +14,7 @@ export const RATE_RULES = {
   credentialIssue: { window: 60, max: 30 },
   bulk: { window: 60, max: 5 },
   photoUpload: { window: 60, max: 30 },
+  documentUpload: { window: 60, max: 30 },
   export: { window: 300, max: 10 },
 } satisfies Record<string, RateRule>;
 

@@ -9,7 +9,7 @@ import { decryptToken, encryptToken, generateCredentialToken, hashToken } from "
 import type { Actor, RequestContext } from "./context";
 import { recordAudit } from "./audit";
 import { emitEvent } from "./outbox";
-import { authorize } from "./employees";
+import { authorize } from "./authorize";
 import { getSettings } from "./settings";
 
 export function verificationUrl(token: string): string {
@@ -130,4 +130,21 @@ export async function getCredentialPreview(db: Db, actor: Actor, employeeId: str
     qrSvg: await renderQrSvg(url),
     qrPath: renderQrPath(url),
   };
+}
+
+export interface VerificationSummary {
+  /** Public checks of this employee's QR in the last 30 days. */
+  last30Days: number;
+  lastCheckedAt: string | null;
+  lastResult: string | null;
+}
+
+/** How often (and how recently) this employee's QR has been scanned. */
+export async function getVerificationSummary(db: Db, actor: Actor, employeeId: string, ctx: RequestContext, now = new Date()): Promise<VerificationSummary> {
+  await authorize(db, actor, "credential:read", ctx, { type: "employee", id: employeeId });
+  const [count, last] = await Promise.all([
+    db.verificationEvent.count({ where: { employeeId, createdAt: { gte: addDays(now, -30) } } }),
+    db.verificationEvent.findFirst({ where: { employeeId }, orderBy: { createdAt: "desc" }, select: { createdAt: true, result: true } }),
+  ]);
+  return { last30Days: count, lastCheckedAt: last?.createdAt.toISOString() ?? null, lastResult: last?.result ?? null };
 }

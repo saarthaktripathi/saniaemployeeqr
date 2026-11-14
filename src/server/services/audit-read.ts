@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { Db } from "@/server/db/client";
 import { can } from "@/server/authorization/permissions";
 import type { Actor, RequestContext } from "./context";
-import { authorize } from "./employees";
+import { authorize } from "./authorize";
 import { SECURITY_ACTION_PREFIXES } from "./audit";
 
 export const auditQuerySchema = z.object({

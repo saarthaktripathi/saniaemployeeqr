@@ -8,14 +8,16 @@ A full-stack web application for managing employee records and issuing a unique,
 
 | Area | What it does |
 | --- | --- |
-| HR dashboard | Collapsible sidebar, notifications (recent activity), interactive KPI cards that filter the directory in place; server-side search, combinable filters, sort and pagination; table with photos (cards on phones); add/edit; deactivate/reactivate/archive; delete (single or bulk); CSV/Excel import, CSV export; live updates across sessions |
+| Group employee directory | One directory for every company of the Sania group: company, business vertical, department, designation, employment type (full-time, part-time, contract, consultant, intern), work mode (office/remote/hybrid) and location, team and reporting manager with direct reports, official email and contact number, attendance/leave references, exit details and an employment-history timeline |
+| HR dashboard | Collapsible sidebar, notifications (recent activity), interactive KPI cards that filter the directory in place; server-side search (name, ID, email), filters by company, department, designation, status (incl. exited), employment type, work mode, QR and ID validity; sort and pagination; table with photos (cards on phones); add/edit; deactivate/reactivate/record exit/archive; delete (single or bulk); CSV/Excel import, CSV export; live updates across sessions |
+| Restricted records | Salary / stipend / fee revisions (Owner only unless granted; hidden until shown, every view logged) and employee documents (offer letters, contracts, ID proofs…; PDF/images ≤ 5 MB; HR Admin and Owner, downloads logged) |
 | Employee photos | Drag-and-drop upload with circular crop, zoom and reposition; JPEG/PNG/WebP; compressed in the browser and re-encoded on the server; shown in the directory, profile, ID card and verification page |
 | Digital ID card | Corporate CR80 card with photo, name, designation, ID, department, validity, live status and QR; download as PNG or PDF, or print |
 | Duplicate cleanup | Import can skip employees that already exist; the Import page lists duplicate records (e.g. a CSV uploaded twice) and removes the extra copies in one click, keeping one per person |
 | QR credentials | Issue, preview, copy, print, reissue and revoke. Each QR holds only an opaque 256-bit token |
 | Public verification | `/verify/<token>` (mobile-first, no login) shows the ID card with photo and one of five verdicts: **VALID**, **INACTIVE**, **EXPIRED**, **REVOKED**, **INVALID** — decided by the server on every scan |
-| Access control | Owner / HR Administrator / HR Staff roles plus individually grantable permissions, enforced on the server |
-| Security | Argon2id passwords, TOTP MFA (enforceable for privileged roles), DB-backed rate limits, CSP with nonces, CSRF origin checks, append-only audit log |
+| Access control | Owner / HR Administrator / HR Staff / Management (read-only leadership) roles plus individually grantable permissions, enforced on the server |
+| Security | Argon2id passwords, TOTP MFA (enforceable for privileged roles and anyone with salary/document access), DB-backed rate limits, CSP with nonces, CSRF origin checks, append-only audit log |
 
 ## Quick start (local development)
 
@@ -30,7 +32,20 @@ npm run db:seed             # fictional demo data; prints demo logins
 npm run dev                 # http://localhost:3000
 ```
 
-The seed prints three **local-only** accounts (Owner, HR Admin, HR Staff) with random passwords. MFA enforcement is switched off in the local seed only; turn it on under **System Rules**.
+The seed prints four **local-only** accounts (Owner, HR Admin, HR Staff, Management) with random passwords, and creates three fictional group companies. MFA enforcement is switched off in the local seed only; turn it on under **System Rules**.
+
+## Group employee directory
+
+- **Companies** (Owner, sidebar → Companies): add, rename, mark inactive or delete (only when empty) the companies of the Sania group. Every employee belongs to one company; inactive companies keep their employees but can't receive new ones. While the group has a single active company it is chosen automatically.
+- **Employee IDs** stay one group-wide sequence (`SJB-2026-001`…), so an ID is unique across all companies and doesn't change when someone moves between companies.
+- **Employee profile** tabs: *Overview* (status, company/role/reporting, contact, attendance & leave references, QR credential and verification details), *Employment history* (automatic entries for joining, designation/department/company/manager/type/mode/location changes, exit and rejoin; manual entries for earlier history), *Documents*, *Compensation* and *Activity* — restricted tabs appear only with the matching permission.
+- **Record exit** (permission `employee:deactivate`): last working day, exit type and reason. The employee becomes inactive, so their QR verifies as “Not a current employee”; the record stays in the directory. **Reactivate** later records a rejoin and clears the exit.
+- **Compensation**: revisions (salary, stipend or consulting fee; amount, currency, monthly/annual/hourly, effective date). Owner only by default — grant `compensation:read` / `compensation:manage` to specific users under Users & Access. Values are fetched only when someone presses **Show**, every view is in the activity log, and amounts never appear in exports, events or public pages.
+- **Documents**: PDF, JPEG, PNG or WebP up to 5 MB, checked by content (not file name). Stored in the `employee_document_blob` table behind a store interface (R2/S3 can replace it). HR Admin and Owner by default; every download is logged. Upload masked Aadhaar copies only.
+- **Attendance & leave**: reference fields (attendance/biometric ID, leave policy, link into your HRMS). The app does not track attendance itself.
+- **Import columns** add `company` (name or short code), `employmentType`, `workMode`, `team`, `reportingManager` (an existing employee ID), `attendanceRef`, `leavePolicy`. **Export** adds company, type, work mode, team, manager ID, joining and exit dates (never phone, salary or documents).
+
+The `20261114120000_employee_directory` migration is additive: it creates the primary company from System Rules (“Sania Job Bowl”), assigns every existing employee to it and starts each timeline with a “Joined” entry. On Render it runs automatically at start.
 
 ## Removing employees
 
@@ -41,7 +56,7 @@ Owners and HR Administrators (permission `employee:delete`) can permanently dele
 - **Bulk import page → Duplicate employees:** if the same CSV was uploaded twice, matching records are grouped here. **Remove N duplicates** deletes every extra copy in one step (up to 1,000 per click) and keeps one record per person — the one with a QR credential, otherwise the oldest. Each group also has its own **Remove copy** button.
 - **Prevent duplicates:** the import form's **Skip employees that already exist** option (on by default) ignores rows that match an existing record or an earlier row in the same file.
 
-Deletion asks for a reason, is all-or-nothing, removes the employee's QR credentials (printed QRs then show *Invalid*) and is recorded in the append-only audit log. It cannot be undone — use **Archive** if the record may be needed later. Records match as duplicates when name, department, job title, business vertical, location, joining date, phone and work email are all equal (ignoring case and extra spaces).
+Deletion asks for a reason, is all-or-nothing, removes the employee's QR credentials (printed QRs then show *Invalid*) and is recorded in the append-only audit log. It cannot be undone — use **Archive** if the record may be needed later. Records match as duplicates when company, name, department, job title, business vertical, location, joining date, phone and work email are all equal (ignoring case and extra spaces).
 
 API: `POST /api/employees/delete` with `{ "ids": [...], "reason": "..." }`; `GET /api/employees/duplicates`; `POST /api/employees/import?skipDuplicates=1`.
 

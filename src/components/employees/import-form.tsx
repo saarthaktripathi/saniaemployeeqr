@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Alert, Card, CardHeader } from "@/components/ui/primitives";
 
 const TEMPLATE =
-  "firstName,lastName,department,jobTitle,businessVertical,workLocation,workEmail,joiningDate,idIssueDate,idExpiresAt,employmentStatus\r\n" +
-  "Asha,Verma,Recruitment,Talent Partner,Staffing,Hyderabad,,2026-01-15,,,ACTIVE\r\n";
+  "firstName,lastName,company,department,jobTitle,businessVertical,employmentType,workMode,workLocation,team,reportingManager,workEmail,phone,attendanceRef,leavePolicy,joiningDate,idIssueDate,idExpiresAt,employmentStatus\r\n" +
+  "Asha,Verma,Sania Job Bowl,Recruitment,Talent Partner,Staffing,Full-time,Office,Hyderabad,Campus Hiring,,,,BIO-1042,Standard,2026-01-15,,,ACTIVE\r\n";
 
 const MAX_CSV = 1024 * 1024;
 const MAX_XLSX = 5 * 1024 * 1024;
@@ -54,7 +54,7 @@ export function ImportForm() {
         <CardHeader
           eyebrow="Step 1"
           title="Prepare your file"
-          description="CSV or Excel (.xlsx, first sheet). Required columns: firstName, department, jobTitle. Optional: lastName, displayName, workEmail, phone, businessVertical, workLocation, joiningDate, idIssueDate, idExpiresAt (YYYY-MM-DD or Excel dates), employmentStatus (ACTIVE / INACTIVE)."
+          description="CSV or Excel (.xlsx, first sheet). Required columns: firstName, department, jobTitle — plus company (name or short code) once the group has more than one company. Optional: lastName, displayName, workEmail, phone, businessVertical, employmentType (Full-time, Part-time, Contract, Consultant, Intern), workMode (Office, Remote, Hybrid), workLocation, team, reportingManager (an existing employee ID such as SJB-2026-001), attendanceRef, leavePolicy, joiningDate, idIssueDate, idExpiresAt (YYYY-MM-DD or Excel dates), employmentStatus (ACTIVE / INACTIVE)."
         />
         <div className="p-5">
           <a
@@ -136,7 +136,7 @@ export function ImportForm() {
             <input type="checkbox" className="mt-0.5 size-4 accent-primary-600" checked={skipDuplicates} onChange={(e) => setSkipDuplicates(e.target.checked)} />
             <span>
               Skip employees that already exist
-              <span className="block text-xs text-ink-subtle">Rows matching an existing record (same name, department, job title, location, joining date, phone and email) are not created again — safe if a file is uploaded twice.</span>
+              <span className="block text-xs text-ink-subtle">Rows matching an existing record (same company, name, department, job title, location, joining date, phone and email) — or repeated within the file — are not created again. Safe if a file is uploaded twice.</span>
             </span>
           </label>
           <Button type="submit" disabled={!file} loading={busy}>

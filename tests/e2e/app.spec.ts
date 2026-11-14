@@ -3,14 +3,22 @@ import sharp from "sharp";
 import { ACCOUNTS, login, stateFile } from "./helpers";
 
 const year = new Date().getUTCFullYear();
-const as = (browser: Browser, who: "owner" | "hradmin" | "hrstaff") => browser.newContext({ storageState: stateFile(who) });
+const SEARCH = "Search by name, employee ID or email";
+const as = (browser: Browser, who: "owner" | "hradmin" | "hrstaff" | "management") => browser.newContext({ storageState: stateFile(who) });
+
+/** The primary group company (created by the migration). The seed adds two more. */
+async function primaryCompanyId(page: Page): Promise<string> {
+  const { companies } = (await (await page.request.get("/api/companies")).json()) as { companies: { id: string; name: string }[] };
+  return companies.find((c) => c.name === "Sania Job Bowl")!.id;
+}
 
 async function createEmployee(page: Page, firstName: string, extra: Record<string, string> = {}) {
   await page.goto("/employees/new");
   await page.getByLabel("First name").fill(firstName);
   await page.getByLabel("Last name").fill("Testcase");
+  await page.getByRole("combobox", { name: "Company", exact: true }).selectOption({ label: "Sania Job Bowl" });
   await page.getByLabel("Department").fill("Quality");
-  await page.getByLabel("Approved job title").fill("QA Analyst");
+  await page.getByLabel("Designation").fill("QA Analyst");
   for (const [label, value] of Object.entries(extra)) await page.getByLabel(label).fill(value);
   await page.getByRole("button", { name: "Create employee" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(`${firstName} Testcase`);
@@ -91,7 +99,7 @@ test.describe("employee lifecycle and QR verification", () => {
     await expect(page.getByText(new RegExp(`SJB-${year}-\\d{3}`)).first()).toBeVisible();
 
     await page.getByRole("link", { name: "Edit" }).click();
-    await page.getByLabel("Approved job title").fill("Senior QA Analyst");
+    await page.getByLabel("Designation").fill("Senior QA Analyst");
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page).toHaveURL(new RegExp(`/employees/${id}$`));
     await expect(page.getByText("Senior QA Analyst").first()).toBeVisible();
@@ -165,11 +173,11 @@ test.describe("directory", () => {
     await expect(page.getByRole("link", { name: "Page 2", exact: true })).toHaveAttribute("aria-current", "page");
 
     await page.goto("/dashboard");
-    await page.getByLabel("Search by name or employee ID").fill(`SJB-${year}-001`);
+    await page.getByLabel(SEARCH).fill(`SJB-${year}-001`);
     await expect(page).toHaveURL(/q=SJB/);
     await expect(page.getByTestId("employee-row")).toHaveCount(1);
 
-    await page.getByLabel("Search by name or employee ID").fill("zzz-no-such-person");
+    await page.getByLabel(SEARCH).fill("zzz-no-such-person");
     await expect(page.getByText("No employees match")).toBeVisible();
     await ctx.close();
   });
@@ -229,7 +237,7 @@ test.describe("responsive and accessible", () => {
   test("mobile layout has no horizontal overflow", async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: stateFile("owner"), viewport: { width: 375, height: 812 } });
     const page = await ctx.newPage();
-    for (const path of ["/dashboard", "/employees/new", "/employees/import", "/activity", "/"]) {
+    for (const path of ["/dashboard", "/employees/new", "/employees/import", "/activity", "/companies", "/"]) {
       await page.goto(path);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, path).toBeLessThanOrEqual(0);
@@ -270,7 +278,8 @@ test.describe("employee photo and digital ID card", () => {
     await page.getByLabel("First name").fill("Photo");
     await page.getByLabel("Last name").fill("Testcase");
     await page.getByLabel("Department").fill("Quality");
-    await page.getByLabel("Approved job title").fill("Photo Analyst");
+    await page.getByRole("combobox", { name: "Company", exact: true }).selectOption({ label: "Sania Job Bowl" });
+    await page.getByLabel("Designation").fill("Photo Analyst");
     await page.locator("#photo-file").filter({ visible: true }).setInputFiles(await photoFile());
     await expect(page.getByRole("slider", { name: /Photo position/ })).toBeVisible();
     await page.getByRole("slider", { name: "Zoom", exact: true }).fill("1.5");
@@ -327,7 +336,7 @@ test.describe("employee photo and digital ID card", () => {
     await expect(page.getByTestId("photo-error")).toHaveText(/too small/);
     // The server enforces its own rules even if the browser checks are bypassed.
     const origin = new URL(page.url()).origin;
-    const created = await page.request.post("/api/employees", { data: { firstName: "Upload", department: "Ops", jobTitle: "Lead" }, headers: { Origin: origin } });
+    const created = await page.request.post("/api/employees", { data: { firstName: "Upload", department: "Ops", jobTitle: "Lead", companyId: await primaryCompanyId(page) }, headers: { Origin: origin } });
     const { employee } = await created.json();
     const bad = await page.request.put(`/api/employees/${employee.id}/photo`, { data: Buffer.from("not an image"), headers: { "Content-Type": "image/png", Origin: origin } });
     expect(bad.status()).toBe(422);
@@ -373,7 +382,7 @@ test.describe("interactive dashboard", () => {
     await expect(page).toHaveURL(/expiry=EXPIRING_SOON/);
     await expect(page).not.toHaveURL(/status=/);
     // Combine with search, then clear everything.
-    await page.getByLabel("Search by name or employee ID").fill("Testcase");
+    await page.getByLabel(SEARCH).fill("Testcase");
     await expect(page).toHaveURL(/q=Testcase/);
     await expect(page).toHaveURL(/expiry=EXPIRING_SOON/);
     await page.getByRole("button", { name: "Clear all filters" }).click();
@@ -386,7 +395,12 @@ test.describe("interactive dashboard", () => {
     const ctx = await as(browser, "owner");
     const page = await ctx.newPage();
     await page.goto("/employees/import");
-    const csv = { name: "staff.csv", mimeType: "text/csv", buffer: Buffer.from("firstName,lastName,department,jobTitle\r\nImport,Onecase,Ops,Lead\r\nImport,Twocase,Ops,Lead\r\n") };
+    // Several group companies exist, so the file names one (by name or short code).
+    const csv = {
+      name: "staff.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from("firstName,lastName,company,department,jobTitle,employmentType\r\nImport,Onecase,Sania Job Bowl,Ops,Lead,Full-time\r\nImport,Twocase,SJB,Ops,Lead,Intern\r\n"),
+    };
     await page.locator("#csv").filter({ visible: true }).setInputFiles(csv);
     await page.getByRole("button", { name: "Validate and import" }).click();
     const result = page.getByRole("status").filter({ hasText: "Import complete" });
@@ -411,6 +425,179 @@ test.describe("interactive dashboard", () => {
     const menu = page.getByRole("menu");
     await expect(menu.getByText("Recent activity")).toBeVisible();
     await expect(menu.locator("li").first()).not.toHaveText(/Loading|No activity yet/);
+    await ctx.close();
+  });
+});
+
+const pdfFile = (name = "offer-letter.pdf") => ({
+  name,
+  mimeType: "application/pdf",
+  buffer: Buffer.from("%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"),
+});
+
+test.describe("group employee directory", () => {
+  test("owner adds a company, creates an employee there with a manager, and filters by company and designation", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    const company = `E2E Ventures ${Date.now().toString(36)}`;
+    await page.goto("/companies");
+    await page.getByRole("button", { name: "Add company" }).click();
+    await page.getByLabel("Company name").fill(company);
+    await page.getByLabel("Short code").fill("EVX");
+    await page.getByRole("button", { name: "Add company" }).click();
+    await expect(page.getByTestId("company-list").getByText(company)).toBeVisible();
+
+    await page.goto("/employees/new");
+    await page.getByLabel("First name").fill("Directory");
+    await page.getByLabel("Last name").fill("Testcase");
+    await page.getByRole("combobox", { name: "Company", exact: true }).selectOption({ label: company });
+    await page.getByLabel("Department").fill("Quality");
+    await page.getByLabel("Designation").fill("Release Manager");
+    await page.getByLabel("Team").fill("Release");
+    await page.getByLabel("Employment type").selectOption({ label: "Contract" });
+    await page.getByLabel("Work mode").selectOption({ label: "Hybrid" });
+    await page.getByRole("combobox", { name: "Reporting manager" }).fill(`SJB-${year}-001`);
+    await page.getByRole("listbox", { name: "Employees" }).getByRole("option").first().click();
+    await expect(page.getByTestId("manager-selected")).toBeVisible();
+    await page.getByRole("button", { name: "Create employee" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Directory Testcase");
+    await expect(page.getByText(company).first()).toBeVisible();
+    await expect(page.getByText("Contract").first()).toBeVisible();
+
+    // The manager's profile lists the new direct report.
+    await page.getByRole("main").getByRole("link", { name: /Lead$/ }).first().click();
+    await expect(page.getByTestId("direct-reports").getByText("Directory Testcase")).toBeVisible();
+
+    // Directory filters: company, then designation.
+    await page.goto("/dashboard");
+    await page.getByRole("combobox", { name: "Company", exact: true }).selectOption({ label: company });
+    await expect(page).toHaveURL(/company=/);
+    await expect(page.getByTestId("employee-row")).toHaveCount(1);
+    await expect(page.getByTestId("employee-row").getByText("Directory Testcase")).toBeVisible();
+    await page.getByRole("button", { name: "Clear all filters" }).click();
+    await page.getByLabel("Designation", { exact: true }).selectOption({ label: "Release Manager" });
+    await expect(page).toHaveURL(/designation=Release/);
+    await expect(page.getByTestId("employee-row").getByText("Directory Testcase")).toBeVisible();
+    await ctx.close();
+  });
+
+  test("recording an exit makes the QR show inactive; reactivating records a rejoin", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    await createEmployee(page, "Leaver");
+    const url = await issueQr(page);
+    const verifier = await (await browser.newContext()).newPage();
+    await verifier.goto(url);
+    await expect(verifier.getByTestId("verification-status")).toHaveText("VALID");
+    await expect(verifier.getByTestId("verified-company")).toHaveText("Sania Job Bowl");
+
+    await page.getByRole("button", { name: "Record exit" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("Exit type").selectOption({ label: "Resignation" });
+    await dialog.getByLabel(/Reason/).fill("Relocating (e2e)");
+    await dialog.getByRole("button", { name: "Record exit" }).click();
+    await expect(page.getByText("Exited", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Relocating (e2e)")).toBeVisible();
+    await verifier.reload();
+    await expect(verifier.getByTestId("verification-status")).toHaveText("INACTIVE");
+
+    await page.getByRole("link", { name: "Employment history" }).click();
+    const timeline = page.getByTestId("history-timeline");
+    await expect(timeline.getByText("Exited", { exact: true })).toBeVisible();
+    await expect(timeline.getByText("Joined", { exact: true })).toBeVisible();
+
+    await page.getByRole("link", { name: "Overview" }).click();
+    await page.getByRole("button", { name: /Reactivate/ }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Reactivate" }).click();
+    await expect(page.getByRole("button", { name: "Record exit" })).toBeVisible();
+    await page.getByRole("link", { name: "Employment history" }).click();
+    await expect(page.getByTestId("history-timeline").getByText("Rejoined", { exact: true })).toBeVisible();
+    await verifier.reload();
+    await expect(verifier.getByTestId("verification-status")).toHaveText("VALID");
+    await ctx.close();
+  });
+
+  test("HR admin uploads and downloads documents; HR staff and management cannot see them", async ({ browser }) => {
+    const ctx = await as(browser, "hradmin");
+    const page = await ctx.newPage();
+    const id = await createEmployee(page, "Records");
+    await page.getByRole("link", { name: "Documents" }).click();
+    await page.getByRole("button", { name: "Upload" }).click();
+    await page.locator("#doc-file").setInputFiles(pdfFile());
+    await page.getByLabel("Category").selectOption({ label: "Offer letter" });
+    await page.getByLabel("Title").fill("Offer letter 2026");
+    await page.getByRole("button", { name: "Upload document" }).click();
+    const list = page.getByTestId("document-list");
+    await expect(list.getByText("Offer letter 2026")).toBeVisible();
+    const download = page.waitForEvent("download");
+    await list.getByRole("link", { name: "Download Offer letter 2026" }).click();
+    expect((await download).suggestedFilename()).toBe("offer-letter.pdf");
+
+    for (const who of ["hrstaff", "management"] as const) {
+      const other = await as(browser, who);
+      const p = await other.newPage();
+      await p.goto(`/employees/${id}`);
+      await expect(p.getByRole("navigation", { name: "Employee sections" }).getByRole("link", { name: "Documents" })).toHaveCount(0);
+      expect((await p.request.get(`/api/employees/${id}/documents`)).status(), who).toBe(403);
+      await other.close();
+    }
+    await ctx.close();
+  });
+
+  test("compensation is owner-only by default and every view is logged", async ({ browser }) => {
+    const ctx = await as(browser, "owner");
+    const page = await ctx.newPage();
+    const id = await createEmployee(page, "Payroll");
+    await page.getByRole("link", { name: "Compensation" }).click();
+    await page.getByTestId("show-compensation").click();
+    await page.getByRole("button", { name: "Add revision" }).click();
+    await page.getByLabel("Amount").fill("55,000");
+    await page.getByRole("button", { name: "Save revision" }).click();
+    await expect(page.getByTestId("current-compensation")).toContainText("55,000");
+
+    const admin = await as(browser, "hradmin");
+    const ap = await admin.newPage();
+    await ap.goto(`/employees/${id}?tab=compensation`);
+    await expect(ap.getByRole("navigation", { name: "Employee sections" }).getByRole("link", { name: "Compensation" })).toHaveCount(0);
+    await expect(ap.getByTestId("show-compensation")).toHaveCount(0);
+    expect((await ap.request.get(`/api/employees/${id}/compensation`)).status()).toBe(403);
+    await admin.close();
+
+    await page.goto("/activity?action=compensation.");
+    await expect(page.getByTestId("audit-list").getByText("Compensation viewed").first()).toBeVisible();
+    await ctx.close();
+  });
+
+  test("management is read-only across the group", async ({ browser }) => {
+    const ctx = await as(browser, "management");
+    const page = await ctx.newPage();
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { name: "Employee Directory" })).toBeVisible();
+    await expect(page.getByTestId("employee-row").first()).toBeVisible();
+    await expect(page.getByRole("link", { name: "Add Employee" })).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Dashboard" }).getByRole("link", { name: "Activity Log" })).toBeVisible();
+    await page.getByTestId("employee-row").first().getByRole("link").first().click();
+    await expect(page.getByRole("heading", { name: "Company, role & reporting" })).toBeVisible();
+    await expect(page.getByTestId("verification-summary")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Edit" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Record exit" })).toHaveCount(0);
+    await page.goto("/companies");
+    await expect(page).toHaveURL(/\/forbidden$/);
+    const res = await page.request.post("/api/employees", { data: { firstName: "X", department: "Y", jobTitle: "Z" }, headers: { Origin: new URL(page.url()).origin } });
+    expect(res.status()).toBe(403);
+    await ctx.close();
+  });
+
+  test("employee profile tabs fit on a phone", async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: stateFile("owner"), viewport: { width: 375, height: 812 } });
+    const page = await ctx.newPage();
+    await page.goto("/dashboard");
+    const href = await page.getByTestId("employee-card").first().getByRole("link").first().getAttribute("href");
+    for (const tab of ["", "?tab=history", "?tab=documents", "?tab=compensation", "?tab=activity"]) {
+      await page.goto(`${href}${tab}`);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, tab || "overview").toBeLessThanOrEqual(0);
+    }
     await ctx.close();
   });
 });

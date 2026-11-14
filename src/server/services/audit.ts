@@ -8,7 +8,7 @@ import { SYSTEM_ACTOR_ID } from "./context";
 export type AuditOutcome = "SUCCESS" | "FAILURE" | "DENIED";
 
 /** Security-sensitive action prefixes, visible only with audit:read:security. */
-export const SECURITY_ACTION_PREFIXES = ["auth.", "users.", "settings.", "authz."] as const;
+export const SECURITY_ACTION_PREFIXES = ["auth.", "users.", "settings.", "authz.", "compensation."] as const;
 
 export function isSecurityAction(action: string): boolean {
   return SECURITY_ACTION_PREFIXES.some((p) => action.startsWith(p));

@@ -2,7 +2,7 @@ import { Card, CardHeader } from "@/components/ui/primitives";
 import { departmentAccent } from "@/components/employees/department-style";
 import type { DashboardStats } from "@/server/services/dashboard";
 
-const RESULT_LABELS: Record<string, string> = {
+export const RESULT_LABELS: Record<string, string> = {
   VERIFIED: "Verified",
   INACTIVE: "Inactive",
   ID_EXPIRED: "ID expired",
@@ -47,7 +47,13 @@ function Bars({ items }: { items: { label: string; count: number; color: string 
 
 export function Insights({ stats }: { stats: DashboardStats }) {
   return (
-    <section aria-label="Insights" className="mt-6 grid gap-4 lg:grid-cols-2">
+    <section aria-label="Insights" className="mt-6 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+      <Card>
+        <CardHeader eyebrow="Sania group" title="Employees by company" description="Current (non-archived) records in each company." />
+        <div className="p-5">
+          <Bars items={stats.companies.map((c) => ({ label: c.name, count: c.count, color: departmentAccent(`company:${c.name}`) }))} />
+        </div>
+      </Card>
       <Card>
         <CardHeader eyebrow="Workforce" title="Records by department" description="Top departments, excluding archived records." />
         <div className="p-5">

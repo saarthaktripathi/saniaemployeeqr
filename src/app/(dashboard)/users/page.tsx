@@ -17,7 +17,7 @@ export default async function UsersPage() {
       <UsersManager
         currentUserId={actor.id}
         grantable={GRANTABLE}
-        rolePermissions={{ OWNER: [...ROLE_PERMISSIONS.OWNER], HR_ADMIN: [...ROLE_PERMISSIONS.HR_ADMIN], HR_STAFF: [...ROLE_PERMISSIONS.HR_STAFF] }}
+        rolePermissions={{ OWNER: [...ROLE_PERMISSIONS.OWNER], HR_ADMIN: [...ROLE_PERMISSIONS.HR_ADMIN], HR_STAFF: [...ROLE_PERMISSIONS.HR_STAFF], MANAGEMENT: [...ROLE_PERMISSIONS.MANAGEMENT] }}
         users={users.map((u) => ({ ...u, twoFactorEnabled: Boolean(u.twoFactorEnabled), createdAt: u.createdAt.toISOString() }))}
       />
     </div>

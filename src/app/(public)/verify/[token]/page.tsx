@@ -42,7 +42,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ token: 
         {e && (
           <div className="animate-rise mx-auto w-full max-w-[340px] sm:col-start-1 sm:row-span-2 sm:row-start-1" style={{ animationDelay: "60ms" }}>
             <IdCardSvg
-              data={{ displayName: e.displayName, employeeCode: e.employeeCode, jobTitle: e.jobTitle, department: e.department, idExpiresAt: e.idExpiresAt, photo: e.photo }}
+              data={{ displayName: e.displayName, employeeCode: e.employeeCode, companyName: e.company, jobTitle: e.jobTitle, department: e.department, idExpiresAt: e.idExpiresAt, photo: e.photo }}
               status={cardStatusOf(view.status)}
               qr={qr}
               logoHref={logoSrc()}
@@ -64,6 +64,12 @@ export default async function VerifyPage({ params }: { params: Promise<{ token: 
                 <div>
                   <dt className="text-xs text-ink-subtle">Employee ID</dt>
                   <dd className="font-mono font-semibold">{e.employeeCode}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink-subtle">Company</dt>
+                  <dd className="font-semibold" data-testid="verified-company">
+                    {e.company}
+                  </dd>
                 </div>
                 {e.jobTitle && (
                   <div>

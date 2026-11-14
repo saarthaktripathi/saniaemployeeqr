@@ -6,6 +6,8 @@ export interface IdCardData {
   displayName: string;
   employeeCode: string;
   jobTitle: string | null;
+  /** The employee's group company (shown as its own row). */
+  companyName?: string | null;
   department: string | null;
   idExpiresAt: string;
   /** Data URL or same-origin URL; null shows initials. */
@@ -60,9 +62,12 @@ export function IdCardSvg({
   const nameSize = name.length > 26 ? 24 : name.length > 20 ? 28 : 34;
   const rows: [string, string, boolean][] = [
     ["EMPLOYEE ID", data.employeeCode, true],
+    ...(data.companyName ? ([["COMPANY", fit(data.companyName, 20), false]] as [string, string, boolean][]) : []),
     ["DEPARTMENT", fit(data.department ?? "—", 18), false],
     ["VALID UNTIL", formatDate(data.idExpiresAt), false],
   ];
+  // Three rows keep the original spacing; four are tightened to fit above the footer.
+  const rowGap = rows.length > 3 ? 58 : 76;
   const pillW = st.label.length * 10 + 44;
 
   return (
@@ -149,10 +154,10 @@ export function IdCardSvg({
         <line x1="36" y1="524" x2="504" y2="524" stroke="#dde4ee" strokeWidth="2" />
         {rows.map(([label, value, mono], i) => (
           <g key={label}>
-            <text x="40" y={566 + i * 76} fill="#8593a6" fontSize="12" fontWeight="600" letterSpacing="2">
+            <text x="40" y={(rows.length > 3 ? 560 : 566) + i * rowGap} fill="#8593a6" fontSize="12" fontWeight="600" letterSpacing="2">
               {label}
             </text>
-            <text x="40" y={594 + i * 76} fill="#0f1d33" fontSize={mono ? 22 : 20} fontWeight={mono ? 700 : 600} fontFamily={mono ? MONO : FONT}>
+            <text x="40" y={(rows.length > 3 ? 586 : 594) + i * rowGap} fill="#0f1d33" fontSize={mono ? 22 : 20} fontWeight={mono ? 700 : 600} fontFamily={mono ? MONO : FONT}>
               {value}
             </text>
           </g>

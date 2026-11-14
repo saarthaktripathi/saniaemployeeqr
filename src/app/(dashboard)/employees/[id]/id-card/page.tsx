@@ -48,6 +48,7 @@ export default async function IdCardPage({ params }: { params: Promise<{ id: str
               data={{
                 displayName: employee.displayName,
                 employeeCode: employee.employeeCode,
+                companyName: employee.company.name,
                 jobTitle: settings.publicShowJobTitle ? employee.jobTitle : null,
                 department: settings.publicShowDepartment ? employee.department : null,
                 idExpiresAt: employee.idExpiresAt.toISOString().slice(0, 10),

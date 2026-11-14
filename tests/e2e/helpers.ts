@@ -4,6 +4,7 @@ export const ACCOUNTS = {
   owner: { email: "owner@sania.local", password: () => process.env.SEED_OWNER_PASSWORD! },
   hradmin: { email: "hradmin@sania.local", password: () => process.env.SEED_HRADMIN_PASSWORD! },
   hrstaff: { email: "hrstaff@sania.local", password: () => process.env.SEED_HRSTAFF_PASSWORD! },
+  management: { email: "management@sania.local", password: () => process.env.SEED_MANAGEMENT_PASSWORD! },
 } as const;
 
 export type AccountKey = keyof typeof ACCOUNTS;

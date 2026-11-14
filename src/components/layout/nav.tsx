@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronsLeft, CirclePlus, CloudUpload, History, LockKeyhole, Menu, ShieldCheck, Target, UserCog, Users, X } from "lucide-react";
+import { Building2, ChevronsLeft, CirclePlus, CloudUpload, History, LockKeyhole, Menu, ShieldCheck, Target, UserCog, Users, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { SIDEBAR_COOKIE } from "@/lib/ui-prefs";
 
-const ICONS = { directory: Users, add: CirclePlus, import: CloudUpload, activity: History, rules: ShieldCheck, users: UserCog, security: LockKeyhole };
+const ICONS = { directory: Users, add: CirclePlus, import: CloudUpload, activity: History, companies: Building2, rules: ShieldCheck, users: UserCog, security: LockKeyhole };
 
 export interface NavItem {
   href: string;

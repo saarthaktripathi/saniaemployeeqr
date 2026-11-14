@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { Client } from "pg";
-import { E2E_DB } from "../../playwright.config";
+import { E2E_DB, E2E_SECRETS } from "../../playwright.config";
 
 /** Creates (if needed), migrates, wipes and seeds the isolated e2e database. */
 export default async function globalSetup() {
@@ -26,8 +26,12 @@ export default async function globalSetup() {
   );
   await c.query(`DELETE FROM "audit_log"`);
   await c.query(`DELETE FROM "user"`);
+  // Keep only the primary company created by the migration; the seed adds the others.
+  await c.query(`DELETE FROM "company" WHERE "id" <> (SELECT "id" FROM "company" ORDER BY "createdAt", "id" LIMIT 1)`);
+  await c.query(`UPDATE "company" SET "isActive" = true`);
   await c.query("COMMIT");
   await c.end();
 
-  execSync("npx tsx --conditions=react-server prisma/seed.ts", { env: { ...env, SEED_EMPLOYEES: "30" }, stdio: "pipe" });
+  // Same secrets as the server, so seeded QR credentials can be decrypted and displayed.
+  execSync("npx tsx --conditions=react-server prisma/seed.ts", { env: { ...env, ...E2E_SECRETS, SEED_EMPLOYEES: "30" }, stdio: "pipe" });
 }

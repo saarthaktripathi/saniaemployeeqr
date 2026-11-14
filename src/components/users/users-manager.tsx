@@ -8,9 +8,16 @@ import { api, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/form";
 import { Badge, Card, CardHeader } from "@/components/ui/primitives";
+import { PERMISSION_LABELS, ROLE_LABELS, type Permission, type Role } from "@/server/authorization/permissions";
 
-type Role = "OWNER" | "HR_ADMIN" | "HR_STAFF";
-const ROLE_LABELS: Record<Role, string> = { OWNER: "Owner", HR_ADMIN: "HR Administrator", HR_STAFF: "HR Staff" };
+const ROLE_HINTS: Record<Role, string> = {
+  OWNER: "Full control, including users, companies, salary and system rules.",
+  HR_ADMIN: "Manages employees, QR credentials and documents.",
+  HR_STAFF: "Read-only directory access; extra permissions can be granted.",
+  MANAGEMENT: "Read-only leadership view: directory, dashboards, ID cards and activity log.",
+};
+
+const permissionLabel = (p: string) => PERMISSION_LABELS[p as Permission] ?? p;
 
 interface UserRow {
   id: string;
@@ -67,7 +74,7 @@ export function UsersManager({ users, currentUserId, grantable, rolePermissions 
                     {u.twoFactorEnabled ? <Badge tone="teal">MFA on</Badge> : <Badge tone="warning">MFA off</Badge>}
                     {u.extraPermissions.map((p) => (
                       <Badge key={p} tone="neutral" dot={false}>
-                        +{p}
+                        +{permissionLabel(p)}
                       </Badge>
                     ))}
                   </div>
@@ -163,7 +170,7 @@ function UserEditor({
           <Field label="Email" htmlFor={`${pre}-email`} error={errors.email} required>
             <Input id={`${pre}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={Boolean(user)} />
           </Field>
-          <Field label="Role" htmlFor={`${pre}-role`} error={errors.role}>
+          <Field label="Role" htmlFor={`${pre}-role`} error={errors.role} hint={ROLE_HINTS[role]}>
             <Select id={`${pre}-role`} value={role} onChange={(e) => setRole(e.target.value as Role)} disabled={self}>
               {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
                 <option key={r} value={r}>
@@ -185,12 +192,13 @@ function UserEditor({
         {role !== "OWNER" && (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-ink">Additional permissions</legend>
+            <p className="mb-3 text-xs text-ink-muted">Salary and document access are sensitive: holders must use an authenticator app when “Require MFA” is on.</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {grantable.map((p) => (
                 <Checkbox
                   key={p}
-                  label={p}
-                  description={inherited.has(p) ? "Included in role" : undefined}
+                  label={permissionLabel(p)}
+                  description={inherited.has(p) ? "Included in role" : p}
                   checked={inherited.has(p) || extra.includes(p)}
                   disabled={inherited.has(p)}
                   onChange={(e) => setExtra((x) => (e.target.checked ? [...x, p] : x.filter((y) => y !== p)))}

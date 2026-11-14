@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/primitives";
 import type { CredentialState, IdValidity } from "@/features/employees/rules";
 
-export function EmploymentBadge({ status, archived }: { status: "ACTIVE" | "INACTIVE"; archived?: boolean }) {
+export function EmploymentBadge({ status, archived, exited }: { status: "ACTIVE" | "INACTIVE"; archived?: boolean; exited?: boolean }) {
   if (archived) return <Badge tone="neutral">Archived</Badge>;
+  if (exited && status === "INACTIVE") return <Badge tone="danger">Exited</Badge>;
   return status === "ACTIVE" ? <Badge tone="success">Active</Badge> : <Badge tone="danger">Inactive</Badge>;
 }
 

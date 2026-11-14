@@ -4,6 +4,7 @@ import { db } from "@/server/db/client";
 import { requirePageActor } from "@/server/auth/session";
 import { can } from "@/server/authorization/permissions";
 import { listAudit } from "@/server/services/audit-read";
+import { SECURITY_ACTION_PREFIXES } from "@/server/services/audit";
 import { Card, CardHeader, PageHeader } from "@/components/ui/primitives";
 import { AuditList } from "@/components/audit/audit-list";
 import { buttonClass } from "@/components/ui/button";
@@ -14,6 +15,9 @@ const FILTERS: [string, string][] = [
   ["", "All"],
   ["employee.", "Employees"],
   ["credential.", "Credentials"],
+  ["document.", "Documents"],
+  ["company.", "Companies"],
+  ["compensation.", "Compensation"],
   ["auth.", "Sign-ins"],
   ["users.", "Users"],
   ["settings.", "Settings"],
@@ -24,7 +28,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const { actor, ctx } = await requirePageActor("audit:read");
   const sp = await searchParams;
   const security = can(actor, "audit:read:security");
-  const filters = FILTERS.filter(([p]) => security || !["auth.", "users.", "settings.", "authz."].includes(p));
+  const filters = FILTERS.filter(([p]) => security || !(SECURITY_ACTION_PREFIXES as readonly string[]).includes(p));
   const action = filters.some(([p]) => p === sp.action) ? sp.action ?? "" : "";
   const result = await listAudit(db, actor, { action, cursor: sp.cursor }, ctx).catch(() => listAudit(db, actor, {}, ctx));
 
@@ -33,7 +37,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       <PageHeader
         eyebrow="Compliance"
         title="Activity Log"
-        description={`Append-only record of sensitive actions.${security ? "" : " Security events (sign-ins, users, settings) are visible to the owner only."}`}
+        description={`Append-only record of sensitive actions.${security ? "" : " Security events (sign-ins, users, settings, compensation) are visible to the owner only."}`}
       />
       <nav aria-label="Filter activity" className="mb-4 flex flex-wrap gap-2">
         {filters.map(([p, label]) => (

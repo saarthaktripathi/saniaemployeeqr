@@ -2,7 +2,7 @@ import "server-only";
 import type { Db } from "@/server/db/client";
 import { addDays, utcToday } from "@/features/employees/rules";
 import type { Actor, RequestContext } from "./context";
-import { authorize } from "./employees";
+import { authorize } from "./authorize";
 import { getSettings } from "./settings";
 
 /**
@@ -28,6 +28,8 @@ export interface DashboardStats {
   warnDays: number;
   verifications7d: { result: string; count: number }[];
   departments: { department: string; count: number }[];
+  /** Non-archived employees per group company (all companies, largest first). */
+  companies: { id: string; name: string; count: number }[];
 }
 
 export async function getDashboardStats(db: Db, actor: Actor, ctx: RequestContext, now = new Date()): Promise<DashboardStats> {
@@ -38,7 +40,7 @@ export async function getDashboardStats(db: Db, actor: Actor, ctx: RequestContex
   const since = addDays(now, -7);
   const since30 = addDays(now, -30);
 
-  const [counts, creds, verifications, departments] = await Promise.all([
+  const [counts, creds, verifications, departments, companies] = await Promise.all([
     db.$queryRaw<Record<string, bigint>[]>`
       SELECT
         count(*) FILTER (WHERE "archivedAt" IS NULL) AS total,
@@ -65,6 +67,10 @@ export async function getDashboardStats(db: Db, actor: Actor, ctx: RequestContex
       orderBy: { _count: { department: "desc" } },
       take: 8,
     }),
+    db.$queryRaw<{ id: string; name: string; n: bigint }[]>`
+      SELECT c."id"::text AS id, c."name", count(e."id") AS n
+      FROM "company" c LEFT JOIN "employee" e ON e."companyId" = c."id" AND e."archivedAt" IS NULL
+      GROUP BY c."id", c."name" ORDER BY n DESC, c."name" ASC LIMIT 50`,
   ]);
 
   const c = counts[0] ?? {};
@@ -81,6 +87,7 @@ export async function getDashboardStats(db: Db, actor: Actor, ctx: RequestContex
     warnDays: settings.expiryWarningDays,
     verifications7d: verifications.map((v) => ({ result: v.result, count: v._count._all })),
     departments: departments.map((d) => ({ department: d.department, count: d._count._all })),
+    companies: companies.map((r) => ({ id: r.id, name: r.name, count: Number(r.n) })),
   };
 }
 
@@ -125,11 +132,11 @@ export async function getDashboardTrends(db: Db, actor: Actor, ctx: RequestConte
         coalesce(
           (SELECT l."metadata"->>'to' FROM "audit_log" l
             WHERE l."targetType" = 'employee' AND l."targetId" = a."id"::text AND l."createdAt" <= a.ts
-              AND l."action" IN ('employee.deactivated', 'employee.reactivated', 'employee.archived', 'employee.unarchived')
+              AND l."action" IN ('employee.deactivated', 'employee.reactivated', 'employee.archived', 'employee.unarchived', 'employee.exited')
             ORDER BY l."createdAt" DESC, l."id" DESC LIMIT 1),
           (SELECT l."metadata"->>'from' FROM "audit_log" l
             WHERE l."targetType" = 'employee' AND l."targetId" = a."id"::text AND l."createdAt" > a.ts
-              AND l."action" IN ('employee.deactivated', 'employee.reactivated', 'employee.archived', 'employee.unarchived')
+              AND l."action" IN ('employee.deactivated', 'employee.reactivated', 'employee.archived', 'employee.unarchived', 'employee.exited')
             ORDER BY l."createdAt" ASC, l."id" ASC LIMIT 1),
           a."employmentStatus"::text
         ) AS status

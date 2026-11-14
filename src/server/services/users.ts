@@ -6,7 +6,7 @@ import { userCreateSchema, userUpdateSchema } from "@/features/users/schema";
 import { hashPassword } from "@/server/auth/password";
 import type { Actor, RequestContext } from "./context";
 import { recordAudit } from "./audit";
-import { authorize } from "./employees";
+import { authorize } from "./authorize";
 
 const publicUser = {
   id: true,

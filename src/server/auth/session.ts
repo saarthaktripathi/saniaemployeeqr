@@ -2,7 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db/client";
-import { can, isPrivileged, type Permission, type Role } from "@/server/authorization/permissions";
+import { can, requiresMfa, type Permission, type Role } from "@/server/authorization/permissions";
 import type { Actor, RequestContext } from "@/server/services/context";
 import { getSettings } from "@/server/services/settings";
 import { getAuth } from "./auth";
@@ -31,7 +31,7 @@ export async function getActorFromHeaders(h: Headers): Promise<Actor | null> {
 }
 
 export async function mfaSetupRequired(actor: Actor): Promise<boolean> {
-  if (!isPrivileged(actor.role) || actor.twoFactorEnabled) return false;
+  if (!requiresMfa(actor) || actor.twoFactorEnabled) return false;
   return (await getSettings(db)).requireMfaForPrivileged;
 }
 

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-const PROTECTED = ["/dashboard", "/employees", "/activity", "/settings", "/users", "/account"];
+const PROTECTED = ["/dashboard", "/employees", "/activity", "/companies", "/settings", "/users", "/account"];
 
 /**
  * Edge of the request pipeline:

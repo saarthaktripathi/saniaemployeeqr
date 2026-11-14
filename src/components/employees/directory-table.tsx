@@ -14,14 +14,19 @@ import { DepartmentIcon, departmentAccent } from "./department-style";
 import { cn, formatDate } from "@/lib/cn";
 import type { CredentialState, IdValidity } from "@/features/employees/rules";
 import type { StatusAction } from "@/features/employees/schema";
+import { EMPLOYMENT_TYPE_LABELS, type EmploymentType } from "@/features/employees/labels";
 
 export interface DirectoryRow {
   id: string;
   employeeCode: string;
   displayName: string;
+  company: string;
   department: string;
   jobTitle: string;
+  employmentType: EmploymentType | null;
   employmentStatus: "ACTIVE" | "INACTIVE";
+  /** An exit has been recorded. */
+  exited: boolean;
   archived: boolean;
   idExpiresAt: string;
   idValidity: IdValidity;
@@ -144,12 +149,12 @@ function RowActions({ r, perms, request, del }: { r: DirectoryRow; perms: Direct
     <div className="flex items-center justify-end gap-2">
       {perms.update && !r.archived && (
         <Link href={`/employees/${r.id}/edit`} className={cn(pill, "border border-border-strong bg-white text-ink hover:bg-navy-100/50")} aria-label={`Edit ${r.displayName}`}>
-          <Pencil className="size-3.5" aria-hidden /> <span className="hidden xl:inline">Edit</span>
+          <Pencil className="size-3.5" aria-hidden /> <span className="hidden 2xl:inline">Edit</span>
         </Link>
       )}
       {perms.credentialRead && (
         <Link href={`/employees/${r.id}#credential`} className={cn(pill, "border border-border-strong bg-white text-ink hover:bg-navy-100/50")} aria-label={`Preview QR for ${r.displayName}`}>
-          <QrCode className="size-3.5" aria-hidden /> <span className="hidden xl:inline">Preview QR</span>
+          <QrCode className="size-3.5" aria-hidden /> <span className="hidden 2xl:inline">Preview QR</span>
         </Link>
       )}
       {!r.archived && r.employmentStatus === "ACTIVE" && perms.deactivate && (
@@ -173,7 +178,10 @@ function NameCell({ r }: { r: DirectoryRow }) {
       <EmployeeAvatar id={r.id} name={r.displayName} photoUpdatedAt={r.photoUpdatedAt} size="md" className="size-11 shadow-sm" />
       <span className="min-w-0">
         <span className="block truncate font-semibold text-ink transition-colors group-hover:text-primary-600">{r.displayName}</span>
-        <span className="block truncate text-xs text-ink-subtle">{r.jobTitle}</span>
+        <span className="block truncate text-xs text-ink-subtle">
+          {r.jobTitle}
+          {r.employmentType && r.employmentType !== "FULL_TIME" && ` · ${EMPLOYMENT_TYPE_LABELS[r.employmentType]}`}
+        </span>
       </span>
     </Link>
   );
@@ -208,10 +216,13 @@ const TableRow = memo(function TableRow({
         <NameCell r={r} />
       </td>
       <td className="px-4 py-3 text-[13px] font-semibold whitespace-nowrap text-ink">{r.employeeCode}</td>
-      <td className="px-4 py-3 text-ink-muted">
+      <td className="max-w-56 px-4 py-3 text-ink-muted">
         <span className="flex items-center gap-2">
           <DepartmentIcon department={r.department} className="size-[18px] shrink-0" />
-          {r.department}
+          <span className="min-w-0">
+            <span className="block truncate">{r.department}</span>
+            <span className="block truncate text-xs text-ink-subtle">{r.company}</span>
+          </span>
         </span>
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
@@ -227,7 +238,7 @@ const TableRow = memo(function TableRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-col items-start gap-1">
-          <EmploymentBadge status={r.employmentStatus} archived={r.archived} />
+          <EmploymentBadge status={r.employmentStatus} archived={r.archived} exited={r.exited} />
           <CredentialBadge state={r.credential} />
         </div>
       </td>
@@ -323,7 +334,7 @@ export function DirectoryTable({ rows, perms, total, canCreate, footer }: { rows
                 )}
                 <th scope="col" className="px-4 py-3">Employee</th>
                 <th scope="col" className="px-4 py-3">Employee ID</th>
-                <th scope="col" className="px-4 py-3">Department</th>
+                <th scope="col" className="px-4 py-3">Department &amp; company</th>
                 <th scope="col" className="px-4 py-3">Valid until</th>
                 <th scope="col" className="px-4 py-3">Status</th>
                 <th scope="col" className="px-4 py-3 text-right">Actions</th>
@@ -357,12 +368,16 @@ export function DirectoryTable({ rows, perms, total, canCreate, footer }: { rows
                   <dd className="text-ink">{r.department}</dd>
                 </div>
                 <div>
+                  <dt className="text-ink-subtle">Company</dt>
+                  <dd className="text-ink">{r.company}</dd>
+                </div>
+                <div>
                   <dt className="text-ink-subtle">Valid until</dt>
                   <dd className="text-ink">{formatDate(r.idExpiresAt)}</dd>
                 </div>
               </dl>
               <div className="flex flex-wrap gap-1">
-                <EmploymentBadge status={r.employmentStatus} archived={r.archived} />
+                <EmploymentBadge status={r.employmentStatus} archived={r.archived} exited={r.exited} />
                 <CredentialBadge state={r.credential} />
                 {r.idValidity !== "VALID" && <IdValidityBadge validity={r.idValidity} />}
               </div>

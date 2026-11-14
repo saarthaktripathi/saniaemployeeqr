@@ -112,7 +112,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         <CardHeader eyebrow="Security" title="Access & retention" />
         <div className="space-y-4 p-5">
           <Checkbox
-            label="Require multi-factor authentication for Owners and HR Administrators"
+            label="Require multi-factor authentication for Owners, HR Administrators and anyone with salary or document access"
             description="Privileged users without an authenticator app are sent to enrol before they can use the dashboard."
             checked={v.requireMfaForPrivileged}
             onChange={(e) => set("requireMfaForPrivileged", e.target.checked)}
