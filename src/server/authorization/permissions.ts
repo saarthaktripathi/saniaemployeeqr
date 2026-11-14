@@ -21,6 +21,15 @@ export const PERMISSIONS = [
   "compensation:read",
   "compensation:manage",
   "company:manage",
+  "attendance:read",
+  "attendance:manage",
+  "task:read",
+  "task:manage",
+  "leave:read",
+  "leave:manage",
+  "policy:manage",
+  "account:manage",
+  "announcement:send",
   "audit:read",
   "audit:read:security",
   "dashboard:read",
@@ -29,14 +38,25 @@ export const PERMISSIONS = [
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
-export type Role = "OWNER" | "HR_ADMIN" | "HR_STAFF" | "MANAGEMENT";
+export type Role = "OWNER" | "HR_ADMIN" | "HR_STAFF" | "MANAGEMENT" | "TEAM_MANAGER" | "EMPLOYEE";
 
 export const ROLE_LABELS: Record<Role, string> = {
   OWNER: "Owner",
   HR_ADMIN: "HR Administrator",
   HR_STAFF: "HR Staff",
   MANAGEMENT: "Management",
+  TEAM_MANAGER: "Team Manager",
+  EMPLOYEE: "Employee",
 };
+
+/** Roles that only use the employee workspace (/me) and never the HR console. */
+export const WORKSPACE_ROLES = ["TEAM_MANAGER", "EMPLOYEE"] as const satisfies readonly Role[];
+/** Roles HR administrators may give through invitations (owners manage every other role). */
+export const INVITABLE_ROLES = WORKSPACE_ROLES;
+
+export function isWorkspaceRole(role: Role): boolean {
+  return (WORKSPACE_ROLES as readonly Role[]).includes(role);
+}
 
 const HR_ADMIN: Permission[] = [
   "employee:read",
@@ -52,6 +72,15 @@ const HR_ADMIN: Permission[] = [
   "credential:revoke",
   "document:read",
   "document:manage",
+  "attendance:read",
+  "attendance:manage",
+  "task:read",
+  "task:manage",
+  "leave:read",
+  "leave:manage",
+  "policy:manage",
+  "account:manage",
+  "announcement:send",
   "audit:read",
   "dashboard:read",
 ];
@@ -60,9 +89,13 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   OWNER: PERMISSIONS,
   HR_ADMIN,
   // HR staff: read-only by default; owner may grant create/update/credential perms individually.
-  HR_STAFF: ["employee:read", "credential:read", "dashboard:read"],
+  HR_STAFF: ["employee:read", "credential:read", "dashboard:read", "attendance:read", "task:read", "leave:read"],
   // Leadership: read-only view of the whole group. Salary and documents only if granted.
-  MANAGEMENT: ["employee:read", "credential:read", "dashboard:read", "audit:read"],
+  MANAGEMENT: ["employee:read", "credential:read", "dashboard:read", "audit:read", "attendance:read", "task:read", "leave:read"],
+  // Workspace roles have no organisation-wide permissions. Their self-service access comes from
+  // the linked employee record, and a team manager's from their reporting tree (see services).
+  TEAM_MANAGER: [],
+  EMPLOYEE: [],
 };
 
 /** Permissions that may be granted to individual users on top of their role. */
@@ -80,6 +113,14 @@ export const GRANTABLE: Permission[] = [
   "compensation:read",
   "compensation:manage",
   "company:manage",
+  "attendance:read",
+  "attendance:manage",
+  "task:read",
+  "task:manage",
+  "leave:read",
+  "leave:manage",
+  "account:manage",
+  "announcement:send",
 ];
 
 /** Plain-language names for the Users & Access screen. */
@@ -100,6 +141,15 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "compensation:read": "View salary & compensation",
   "compensation:manage": "Edit salary & compensation",
   "company:manage": "Manage group companies",
+  "attendance:read": "View all attendance",
+  "attendance:manage": "Correct attendance",
+  "task:read": "View all tasks",
+  "task:manage": "Assign & manage tasks",
+  "leave:read": "View all leave",
+  "leave:manage": "Approve leave",
+  "policy:manage": "Attendance & leave policies",
+  "account:manage": "Employee logins & invitations",
+  "announcement:send": "Send announcements",
   "audit:read": "View activity log",
   "audit:read:security": "View security activity",
   "dashboard:read": "View dashboard",
@@ -119,6 +169,8 @@ function isPermission(p: string): p is Permission {
 
 export function permissionsFor(user: Principal): Set<Permission> {
   const set = new Set<Permission>(ROLE_PERMISSIONS[user.role] ?? []);
+  // Workspace logins never hold organisation-wide permissions, whatever is stored on the account.
+  if (isWorkspaceRole(user.role)) return set;
   for (const p of user.extraPermissions ?? []) {
     if (isPermission(p) && GRANTABLE.includes(p)) set.add(p);
   }
@@ -128,6 +180,25 @@ export function permissionsFor(user: Principal): Set<Permission> {
 export function can(user: Principal | null | undefined, permission: Permission): boolean {
   if (!user) return false;
   return permissionsFor(user).has(permission);
+}
+
+/**
+ * Comma-separated RLS scopes (app.scopes) for an actor: organisation-wide read/manage rights
+ * that the database policies honour. Self and team access need no scope.
+ */
+export function rlsScopes(user: Principal): string {
+  const map: [Permission, string][] = [
+    ["employee:read", "employee"],
+    ["attendance:read", "attendance"],
+    ["attendance:manage", "attendance,attendance_manage"],
+    ["task:read", "task"],
+    ["task:manage", "task,task_manage"],
+    ["leave:read", "leave"],
+    ["leave:manage", "leave,leave_manage"],
+    ["policy:manage", "policy_manage"],
+  ];
+  // A manage scope implies the matching read scope.
+  return [...new Set(map.filter(([p]) => can(user, p)).flatMap(([, s]) => s.split(",")))].join(",");
 }
 
 export function isPrivileged(role: Role): boolean {

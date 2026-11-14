@@ -20,6 +20,10 @@ enum UserRole {
   HR_STAFF
   /// Read-only leadership access (directory, dashboards, ID cards, activity log).
   MANAGEMENT
+  /// Line manager: employee workspace plus their reporting tree (team attendance, tasks).
+  TEAM_MANAGER
+  /// Employee self-service workspace only (own attendance, tasks, leave, profile).
+  EMPLOYEE
 }
 
 model User {
@@ -38,6 +42,11 @@ model User {
   isActive         Boolean  @default(true)
   /// Additional permissions granted on top of the role (e.g. "employee:create" for HR staff).
   extraPermissions String[] @default([])
+  /// The employee record this account belongs to (self-service). Unique: one account per employee.
+  employeeId       String?   @unique @db.Uuid
+  employee         Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  /// Opt-in: a personal notification for every punch in/out (HR users with attendance access).
+  notifyPunches    Boolean   @default(false)
 
   sessions   Session[]
   accounts   Account[]
@@ -51,6 +60,17 @@ model User {
   compensationAdded EmployeeCompensation[] @relation("CompensationCreatedBy")
   documentsUploaded EmployeeDocument[]     @relation("DocumentUploadedBy")
   historyRecorded   EmploymentHistory[]    @relation("HistoryCreatedBy")
+  accountTokens     AccountToken[]         @relation("AccountTokenUser")
+  tokensCreated     AccountToken[]         @relation("AccountTokenCreatedBy")
+  notifications     Notification[]
+  announcements     Announcement[]
+  correctionsRequested AttendanceCorrection[] @relation("CorrectionRequestedBy")
+  correctionsReviewed  AttendanceCorrection[] @relation("CorrectionReviewedBy")
+  tasksCreated         Task[]                 @relation("TaskCreatedBy")
+  tasksReviewed        TaskAssignment[]       @relation("TaskReviewedBy")
+  taskComments         TaskComment[]          @relation("TaskCommentAuthor")
+  taskFiles            TaskFile[]             @relation("TaskFileUploadedBy")
+  leaveReviewed        LeaveRequest[]         @relation("LeaveReviewedBy")
 
   @@map("user")
 }
@@ -171,6 +191,7 @@ model Company {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   employees Employee[]
+  holidays  Holiday[]
 
   @@map("company")
 }
@@ -231,6 +252,14 @@ model Employee {
   compensation       EmployeeCompensation[]
   documents          EmployeeDocument[]
   history            EmploymentHistory[]
+  /// Login account linked to this employee (employee self-service), if any.
+  user               User?
+  accountTokens      AccountToken[]
+  attendanceSessions    AttendanceSession[]
+  attendanceEvents      AttendanceEvent[]
+  attendanceCorrections AttendanceCorrection[]
+  taskAssignments       TaskAssignment[]
+  leaveRequests         LeaveRequest[]
 
   @@index([employmentStatus])
   @@index([department])
@@ -493,6 +522,465 @@ model CompanySettings {
   updatedById                String?
 
   @@map("company_settings")
+}
+
+// ---------------------------------------------------------------------------
+// Employee accounts and notifications (workforce management)
+// ---------------------------------------------------------------------------
+
+enum AccountTokenKind {
+  INVITE
+  PASSWORD_RESET
+}
+
+/// Single-use links for employee invitations and password resets. Only the SHA-256 hash of
+/// the token is stored; the link is shown once to the HR user who created it.
+model AccountToken {
+  id          String           @id @default(uuid()) @db.Uuid
+  kind        AccountTokenKind
+  tokenHash   String           @unique
+  /// Login email the account will use (invites) or the account's email (resets).
+  email       String
+  /// Role granted on acceptance (invites only).
+  role        UserRole?
+  employeeId  String?          @db.Uuid
+  employee    Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?            @relation("AccountTokenUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdBy   User?            @relation("AccountTokenCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  expiresAt   DateTime         @db.Timestamptz(3)
+  usedAt      DateTime?        @db.Timestamptz(3)
+  revokedAt   DateTime?        @db.Timestamptz(3)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+
+  @@index([employeeId])
+  @@index([userId])
+  @@map("account_token")
+}
+
+/// In-app notification for one user. `dedupeKey` makes reminder sweeps idempotent.
+model Notification {
+  id          String    @id @default(uuid()) @db.Uuid
+  recipientId String
+  recipient   User      @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  type        String
+  title       String
+  body        String?
+  /// App-relative path opened from the notification.
+  link        String?
+  entityType  String?
+  entityId    String?
+  dedupeKey   String?
+  readAt      DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([recipientId, dedupeKey])
+  @@index([recipientId, createdAt])
+  @@map("notification")
+}
+
+/// HR broadcast; delivered as one notification per recipient.
+model Announcement {
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String
+  body           String
+  /// { kind: "all" } | { kind: "company", companyId } | { kind: "department", department }
+  audience       Json
+  recipientCount Int      @default(0)
+  createdById    String?
+  createdBy      User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@map("announcement")
+}
+
+// ---------------------------------------------------------------------------
+// Attendance
+// ---------------------------------------------------------------------------
+
+enum AttendanceLocation {
+  OFFICE
+  WORK_FROM_HOME
+  CLIENT_VISIT
+}
+
+enum AttendanceSessionStatus {
+  OPEN
+  CLOSED
+  /// Times changed by an approved correction.
+  CORRECTED
+  /// Excluded from all calculations (entered by mistake); kept for the record.
+  VOIDED
+}
+
+enum AttendanceEventType {
+  PUNCH_IN
+  PUNCH_OUT
+  SESSION_ADDED
+  SESSION_CORRECTED
+  SESSION_VOIDED
+  SESSION_RESOLVED
+}
+
+enum CorrectionKind {
+  ADD_SESSION
+  CHANGE_TIMES
+  CLOSE_SESSION
+  VOID_SESSION
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPLIED
+  REJECTED
+  CANCELLED
+}
+
+/// What happens when someone signs out while punched in. Signing out never punches out.
+enum LogoutPolicy {
+  ALLOW
+  WARN
+  BLOCK
+}
+
+/// Organisation-wide attendance rules (single row). Times are local "HH:MM" in `timezone`.
+model AttendancePolicy {
+  id                    Int                  @id @default(1)
+  timezone              String               @default("Asia/Kolkata")
+  shiftStart            String               @default("09:30")
+  shiftEnd              String               @default("18:30")
+  /// Punch-in after shiftStart + grace counts as late.
+  graceMinutes          Int                  @default(15)
+  /// Last punch-out earlier than shiftEnd - this counts as an early departure.
+  earlyLeaveMinutes     Int                  @default(15)
+  fullDayMinutes        Int                  @default(480)
+  halfDayMinutes        Int                  @default(240)
+  allowMultipleSessions Boolean              @default(true)
+  allowedLocations      AttendanceLocation[] @default([OFFICE, WORK_FROM_HOME, CLIENT_VISIT])
+  /// 0 = Sunday ... 6 = Saturday
+  weeklyOffDays         Int[]                @default([0])
+  logoutPolicy          LogoutPolicy         @default(WARN)
+  /// An open session older than this is flagged as incomplete.
+  maxSessionHours       Int                  @default(16)
+  /// How many days back employees may request a correction.
+  correctionWindowDays  Int                  @default(7)
+  updatedAt             DateTime             @updatedAt @db.Timestamptz(3)
+  updatedById           String?
+
+  @@map("attendance_policy")
+}
+
+/// Company holiday (companyId null = every company of the group).
+model Holiday {
+  id          String   @id @default(uuid()) @db.Uuid
+  date        DateTime @db.Date
+  name        String
+  companyId   String?  @db.Uuid
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([date])
+  @@map("holiday")
+}
+
+/// One work session (punch in -> punch out). Times are always generated by the server.
+model AttendanceSession {
+  id              String                  @id @default(uuid()) @db.Uuid
+  employeeId      String                  @db.Uuid
+  employee        Employee                @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  /// Local calendar day of the punch-in (night shifts stay on the day they started).
+  workDate        DateTime                @db.Date
+  punchInAt       DateTime                @db.Timestamptz(3)
+  punchOutAt      DateTime?               @db.Timestamptz(3)
+  location        AttendanceLocation
+  status          AttendanceSessionStatus @default(OPEN)
+  durationSeconds Int?
+  /// Set when a session needs HR attention (e.g. closed long after maxSessionHours).
+  needsReview     Boolean                 @default(false)
+  notes           String?
+  reviewNote      String?
+  createdById     String?
+  closedById      String?
+  version         Int                     @default(1)
+  createdAt       DateTime                @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime                @updatedAt @db.Timestamptz(3)
+  events          AttendanceEvent[]
+  corrections     AttendanceCorrection[]
+
+  @@index([employeeId, workDate])
+  @@index([workDate])
+  @@map("attendance_session")
+}
+
+/// Append-only attendance history (UPDATE/DELETE blocked by trigger, except cascades).
+model AttendanceEvent {
+  id         BigInt              @id @default(autoincrement())
+  employeeId String              @db.Uuid
+  employee   Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  sessionId  String?             @db.Uuid
+  session    AttendanceSession?  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type       AttendanceEventType
+  occurredAt DateTime            @default(now()) @db.Timestamptz(3)
+  /// User id (plain text so history survives user removal).
+  actorId    String?
+  metadata   Json?
+
+  @@index([employeeId, occurredAt])
+  @@index([sessionId])
+  @@map("attendance_event")
+}
+
+/// Correction requests (from employees) and corrections applied by HR, with before/after.
+model AttendanceCorrection {
+  id            String             @id @default(uuid()) @db.Uuid
+  employeeId    String             @db.Uuid
+  employee      Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  sessionId     String?            @db.Uuid
+  session       AttendanceSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  kind          CorrectionKind
+  status        CorrectionStatus   @default(PENDING)
+  workDate      DateTime           @db.Date
+  punchInAt     DateTime?          @db.Timestamptz(3)
+  punchOutAt    DateTime?          @db.Timestamptz(3)
+  location      AttendanceLocation?
+  reason        String
+  requestedById String?
+  requestedBy   User?              @relation("CorrectionRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+  reviewedById  String?
+  reviewedBy    User?              @relation("CorrectionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNote    String?
+  before        Json?
+  after         Json?
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+  reviewedAt    DateTime?          @db.Timestamptz(3)
+
+  @@index([status, createdAt])
+  @@index([employeeId, createdAt])
+  @@map("attendance_correction")
+}
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+/// Per-assignee status (each assignee of a task progresses independently).
+enum TaskStatus {
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum TaskTarget {
+  INDIVIDUAL
+  MULTIPLE
+  DEPARTMENT
+}
+
+enum TaskFileKind {
+  /// Instructions/attachments on the task (visible to every assignee).
+  BRIEF
+  /// Work uploaded by an assignee (visible to them, the assigner and HR).
+  DELIVERABLE
+}
+
+model Task {
+  id           String           @id @default(uuid()) @db.Uuid
+  /// Shown as TSK-00042.
+  number       Int              @unique @default(autoincrement())
+  title        String
+  description  String           @default("")
+  priority     TaskPriority     @default(MEDIUM)
+  target       TaskTarget       @default(INDIVIDUAL)
+  /// Department the task was assigned to (target = DEPARTMENT).
+  department   String?
+  startDate    DateTime?        @db.Date
+  dueDate      DateTime?        @db.Date
+  createdById  String?
+  createdBy    User?            @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  cancelledAt  DateTime?        @db.Timestamptz(3)
+  cancelReason String?
+  version      Int              @default(1)
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+  assignments  TaskAssignment[]
+  comments     TaskComment[]
+  files        TaskFile[]
+  history      TaskHistory[]
+
+  @@index([createdById, createdAt])
+  @@index([dueDate])
+  @@map("task")
+}
+
+model TaskAssignment {
+  id           String        @id @default(uuid()) @db.Uuid
+  taskId       String        @db.Uuid
+  task         Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId   String        @db.Uuid
+  employee     Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  status       TaskStatus    @default(ASSIGNED)
+  /// 0-100
+  progress     Int           @default(0)
+  acceptedAt   DateTime?     @db.Timestamptz(3)
+  startedAt    DateTime?     @db.Timestamptz(3)
+  submittedAt  DateTime?     @db.Timestamptz(3)
+  reviewedAt   DateTime?     @db.Timestamptz(3)
+  reviewedById String?
+  reviewedBy   User?         @relation("TaskReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNote   String?
+  version      Int           @default(1)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  comments     TaskComment[]
+  files        TaskFile[]
+
+  @@unique([taskId, employeeId])
+  @@index([employeeId, status])
+  @@index([status])
+  @@map("task_assignment")
+}
+
+/// Comment thread per assignee (assignee, assigner and HR); other assignees cannot read it.
+model TaskComment {
+  id           String         @id @default(uuid()) @db.Uuid
+  taskId       String         @db.Uuid
+  task         Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignmentId String         @db.Uuid
+  assignment   TaskAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  authorId     String?
+  author       User?          @relation("TaskCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  body         String
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@index([assignmentId, createdAt])
+  @@map("task_comment")
+}
+
+model TaskFile {
+  id           String          @id @default(uuid()) @db.Uuid
+  taskId       String          @db.Uuid
+  task         Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignmentId String?         @db.Uuid
+  assignment   TaskAssignment? @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  kind         TaskFileKind
+  fileName     String
+  contentType  String
+  size         Int
+  storageKey   String
+  uploadedById String?
+  uploadedBy   User?           @relation("TaskFileUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  blob         TaskFileBlob?
+
+  @@index([taskId])
+  @@index([assignmentId])
+  @@map("task_file")
+}
+
+model TaskFileBlob {
+  fileId String   @id @db.Uuid
+  file   TaskFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  data   Bytes
+
+  @@map("task_file_blob")
+}
+
+/// Append-only task history (UPDATE/DELETE blocked by trigger, except cascades).
+model TaskHistory {
+  id           BigInt      @id @default(autoincrement())
+  taskId       String      @db.Uuid
+  task         Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignmentId String?     @db.Uuid
+  actorId      String?
+  action       String
+  fromStatus   TaskStatus?
+  toStatus     TaskStatus?
+  progress     Int?
+  note         String?
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([taskId, createdAt])
+  @@map("task_history")
+}
+
+// ---------------------------------------------------------------------------
+// Leave
+// ---------------------------------------------------------------------------
+
+enum LeaveStatus {
+  PENDING
+  /// HR asked the employee for more information.
+  CLARIFICATION
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveHalfDay {
+  NONE
+  FIRST_HALF
+  SECOND_HALF
+}
+
+/// Configurable leave types and yearly quotas (calendar year).
+model LeaveType {
+  id           String         @id @default(uuid()) @db.Uuid
+  code         String         @unique
+  name         String
+  isPaid       Boolean        @default(true)
+  /// Days per calendar year; null = no limit (e.g. unpaid leave).
+  annualQuota  Decimal?       @db.Decimal(5, 1)
+  allowHalfDay Boolean        @default(true)
+  isActive     Boolean        @default(true)
+  sortOrder    Int            @default(0)
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
+  requests     LeaveRequest[]
+
+  @@map("leave_type")
+}
+
+model LeaveRequest {
+  id           String       @id @default(uuid()) @db.Uuid
+  employeeId   String       @db.Uuid
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId  String       @db.Uuid
+  leaveType    LeaveType    @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  startDate    DateTime     @db.Date
+  endDate      DateTime     @db.Date
+  /// Single-day requests only.
+  halfDay      LeaveHalfDay @default(NONE)
+  /// Working days requested (weekly offs and holidays excluded; 0.5 for a half day).
+  days         Decimal      @db.Decimal(5, 1)
+  reason       String
+  status       LeaveStatus  @default(PENDING)
+  reviewerId   String?
+  reviewer     User?        @relation("LeaveReviewedBy", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewNote   String?
+  /// The employee's reply to a clarification request.
+  employeeNote String?
+  decidedAt    DateTime?    @db.Timestamptz(3)
+  version      Int          @default(1)
+  createdAt    DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@index([employeeId, startDate])
+  @@index([status, startDate])
+  @@map("leave_request")
 }
 
 /// Fixed-window counters for application endpoints (verification, creation, issuance).

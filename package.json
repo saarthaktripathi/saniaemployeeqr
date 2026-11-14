@@ -22,6 +22,7 @@
     "load-test": "tsx tests/load/run-load.ts",
     "owner:create": "tsx --conditions=react-server scripts/create-owner.ts",
     "maintenance:retention": "tsx --conditions=react-server scripts/retention.ts",
+    "maintenance:sweep": "tsx --conditions=react-server scripts/sweep.ts",
     "postinstall": "prisma generate",
     "owner:ensure": "tsx --conditions=react-server scripts/create-owner.ts --if-missing",
     "start:prod": "npm run db:deploy && npm run owner:ensure && next start"

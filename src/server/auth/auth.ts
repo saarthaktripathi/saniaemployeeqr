@@ -10,6 +10,7 @@ import { hashIp } from "@/server/security/crypto";
 import { recordAudit } from "@/server/services/audit";
 import { logger } from "@/server/logging/logger";
 import { hashPassword, verifyPassword } from "./password";
+import { accountAllowsAccess } from "./access";
 import { clientIpFromHeaders } from "./request";
 
 const SESSION_HOURS = 8;
@@ -62,10 +63,14 @@ function createAuth() {
     databaseHooks: {
       session: {
         create: {
-          // Disabled accounts cannot obtain sessions even with a valid password.
+          // Disabled accounts (and employee logins whose employee record is inactive, exited or
+          // archived) cannot obtain sessions even with a valid password.
           before: async (session) => {
-            const user = await db.user.findUnique({ where: { id: session.userId }, select: { isActive: true } });
-            if (!user?.isActive) return false;
+            const user = await db.user.findUnique({
+              where: { id: session.userId },
+              select: { isActive: true, role: true, employee: { select: { employmentStatus: true, archivedAt: true } } },
+            });
+            if (!user || !accountAllowsAccess(user)) return false;
           },
         },
       },

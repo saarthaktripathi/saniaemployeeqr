@@ -1,7 +1,24 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-const PROTECTED = ["/dashboard", "/employees", "/activity", "/companies", "/settings", "/users", "/account"];
+const PROTECTED = [
+  "/home",
+  "/dashboard",
+  "/employees",
+  "/activity",
+  "/companies",
+  "/settings",
+  "/users",
+  "/account",
+  "/accounts",
+  "/attendance",
+  "/tasks",
+  "/leave",
+  "/notifications",
+  "/me",
+];
+/** Paths whose URL carries a secret token: keep it out of Referer headers, caches and indexes. */
+const TOKEN_PATHS = ["/verify/", "/invite/", "/reset-password/"];
 
 /**
  * Edge of the request pipeline:
@@ -46,7 +63,7 @@ export function proxy(request: NextRequest) {
   response.headers.set("Content-Security-Policy", csp);
   response.headers.set("x-request-id", requestId);
 
-  if (pathname.startsWith("/verify/")) {
+  if (TOKEN_PATHS.some((p) => pathname.startsWith(p))) {
     // Keep credential tokens out of Referer headers, caches and search indexes.
     response.headers.set("Referrer-Policy", "no-referrer");
     response.headers.set("Cache-Control", "no-store, max-age=0");

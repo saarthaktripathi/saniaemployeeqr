@@ -9,12 +9,18 @@ import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Select } from "@/components/ui/form";
 import { Badge, Card, CardHeader } from "@/components/ui/primitives";
 import { PERMISSION_LABELS, ROLE_LABELS, type Permission, type Role } from "@/server/authorization/permissions";
+import { ManagerPicker, type PersonOption } from "@/components/employees/manager-picker";
+
+const CONSOLE_ROLES: Role[] = ["OWNER", "HR_ADMIN", "HR_STAFF", "MANAGEMENT"];
+const WORKSPACE_ROLES: Role[] = ["TEAM_MANAGER", "EMPLOYEE"];
 
 const ROLE_HINTS: Record<Role, string> = {
   OWNER: "Full control, including users, companies, salary and system rules.",
   HR_ADMIN: "Manages employees, QR credentials and documents.",
   HR_STAFF: "Read-only directory access; extra permissions can be granted.",
   MANAGEMENT: "Read-only leadership view: directory, dashboards, ID cards and activity log.",
+  TEAM_MANAGER: "Employee workspace plus their reporting team. Usually created by invitation from Employee Access.",
+  EMPLOYEE: "Employee workspace only (own attendance, tasks, leave). Usually created by invitation from Employee Access.",
 };
 
 const permissionLabel = (p: string) => PERMISSION_LABELS[p as Permission] ?? p;
@@ -28,6 +34,8 @@ interface UserRow {
   extraPermissions: string[];
   twoFactorEnabled: boolean;
   createdAt: string;
+  employeeId: string | null;
+  employee: { employeeCode: string; displayName: string } | null;
 }
 
 export function UsersManager({ users, currentUserId, grantable, rolePermissions }: { users: UserRow[]; currentUserId: string; grantable: string[]; rolePermissions: Record<Role, string[]> }) {
@@ -72,6 +80,11 @@ export function UsersManager({ users, currentUserId, grantable, rolePermissions 
                     </Badge>
                     {u.isActive ? <Badge tone="success">Enabled</Badge> : <Badge tone="danger">Disabled</Badge>}
                     {u.twoFactorEnabled ? <Badge tone="teal">MFA on</Badge> : <Badge tone="warning">MFA off</Badge>}
+                    {u.employee && (
+                      <Badge tone="violet" dot={false}>
+                        Employee {u.employee.employeeCode}
+                      </Badge>
+                    )}
                     {u.extraPermissions.map((p) => (
                       <Badge key={p} tone="neutral" dot={false}>
                         +{permissionLabel(p)}
@@ -127,6 +140,9 @@ function UserEditor({
   const [isActive, setActive] = useState(user?.isActive ?? true);
   const [extra, setExtra] = useState<string[]>(user?.extraPermissions ?? []);
   const [password, setPassword] = useState("");
+  const [linked, setLinked] = useState<PersonOption | null>(
+    user?.employeeId && user.employee ? { id: user.employeeId, displayName: user.employee.displayName, employeeCode: user.employee.employeeCode, jobTitle: "", photoUpdatedAt: null } : null,
+  );
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const inherited = new Set(rolePermissions[role]);
@@ -140,11 +156,11 @@ function UserEditor({
       if (user) {
         await api(`/api/users/${user.id}`, {
           method: "PATCH",
-          body: { name, role, isActive, extraPermissions, ...(password ? { password } : {}) },
+          body: { name, role, isActive, extraPermissions, employeeId: linked?.id ?? null, ...(password ? { password } : {}) },
         });
         toast.success("User updated — their sessions were signed out");
       } else {
-        await api("/api/users", { body: { name, email, role, password, extraPermissions } });
+        await api("/api/users", { body: { name, email, role, password, extraPermissions, employeeId: linked?.id ?? null } });
         toast.success("User created. Share the temporary password securely.");
       }
       onSaved();
@@ -172,7 +188,7 @@ function UserEditor({
           </Field>
           <Field label="Role" htmlFor={`${pre}-role`} error={errors.role} hint={ROLE_HINTS[role]}>
             <Select id={`${pre}-role`} value={role} onChange={(e) => setRole(e.target.value as Role)} disabled={self}>
-              {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+              {(user ? [...CONSOLE_ROLES, ...WORKSPACE_ROLES] : CONSOLE_ROLES).map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABELS[r]}
                 </option>
@@ -189,7 +205,15 @@ function UserEditor({
             <Input id={`${pre}-password`} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required={!user} minLength={12} />
           </Field>
         </div>
-        {role !== "OWNER" && (
+        <Field
+          label="Linked employee record"
+          htmlFor={`${pre}-employee`}
+          error={errors.employeeId}
+          hint={WORKSPACE_ROLES.includes(role) ? "Required for employee and team manager logins." : "Optional. Gives this person their own workspace (attendance, tasks, leave) under My workspace."}
+        >
+          <ManagerPicker id={`${pre}-employee`} value={linked} onChange={setLinked} invalid={Boolean(errors.employeeId)} />
+        </Field>
+        {role !== "OWNER" && !WORKSPACE_ROLES.includes(role) && (
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-ink">Additional permissions</legend>
             <p className="mb-3 text-xs text-ink-muted">Salary and document access are sensitive: holders must use an authenticator app when “Require MFA” is on.</p>

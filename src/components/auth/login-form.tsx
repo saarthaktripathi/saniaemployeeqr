@@ -38,7 +38,7 @@ export function LoginForm() {
       setStep("totp");
       return;
     }
-    router.replace("/dashboard");
+    router.replace("/home");
     router.refresh();
   }
 
@@ -55,7 +55,7 @@ export function LoginForm() {
       setError(res.error.status === 429 ? messageFor(429) : "That code is not valid. Try again.");
       return;
     }
-    router.replace("/dashboard");
+    router.replace("/home");
     router.refresh();
   }
 
@@ -96,7 +96,7 @@ export function LoginForm() {
   return (
     <form onSubmit={submitPassword} className="mt-6 space-y-4">
       {error && <Alert tone="danger">{error}</Alert>}
-      <Field label="Work email" htmlFor="email" required>
+      <Field label="Email" htmlFor="email" required>
         <Input id="email" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
       </Field>
       <Field label="Password" htmlFor="password" required>

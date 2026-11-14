@@ -1,6 +1,6 @@
 # Testing
 
-All numbers below were measured on the development machine (load figures on **2026-10-29**; functional suites re-run on **2026-11-14** for the group directory). Nothing is extrapolated.
+All numbers below were measured on the development machine (load figures on **2026-10-29**; functional suites re-run on **2026-11-14** for the workforce release). Nothing is extrapolated.
 
 ## Suites
 
@@ -19,12 +19,13 @@ Run: `npm run db:start` (separate terminal), then `npm test`, `npm run test:cove
 | --- | --- |
 | `npm run lint` | 0 errors, 0 warnings |
 | `npm run typecheck` | pass |
-| Vitest | **165 / 165 passed** (13 files; incl. 25 group-directory integration tests: companies, reporting lines, exit/rejoin, history, compensation, documents, import/export) |
-| Coverage (all server/feature/lib code) | Statements 89.3%, Branches 79.7%, Functions 87.2%, Lines 92.4% |
+| Vitest | **222 / 222 passed** (18 files; workforce: 10 account/RLS, 17 attendance, 12 task/leave/notification integration tests, 2 readiness-probe tests and 13 attendance-rule unit tests). The 127 integration and security tests also pass connected as a Neon-style **non-superuser** owner (rehearsal, 2026-11-15) |
+| Coverage (all server/feature/lib code) | Statements 88.9%, Branches 76.2%, Functions 90.4%, Lines 93.6% |
+| Coverage — workforce services | Lines: attendance 97.6, tasks 99.0, accounts 100, notifications 100, leave 93.8, attendance-hr 92.1, team 91.7, rules/schemas 100 |
 | Coverage — services | Lines 81–100% per file (employees 99.7, companies 97.9, compensation 100, documents 100, history 100, credentials 100, audit 100, verification 81.0, users 90.6) |
 | Coverage — permissions / rate limiting | 100% lines |
 | `npm run build` | pass (all routes dynamic) |
-| Playwright | **31 / 31 passed** (incl. photo upload + crop, ID card PNG/PDF download, mobile verification, KPI filters, import duplicates, sidebar, notifications; companies, manager picker, company/designation filters, record exit → QR inactive → rejoin, documents upload/download, compensation access, Management role, profile tabs on phones) |
+| Playwright | **43 / 43 passed** (31 existing + workforce: employee workspace and blocked HR console/APIs, punch in/out with live HR KPI update, sign-out guard, missed punch-out resolution, correction request → apply, task assign → start → submit → approve, leave apply → approve, team manager scope, invitation → password → login, 22 new pages at 375 px) |
 | `npm audit --omit=dev` | 0 vulnerabilities |
 | Migration drift (`prisma migrate diff`) | no difference |
 
@@ -32,7 +33,9 @@ Lower-covered files are Better Auth glue (`server/auth/auth.ts`, `session.ts`): 
 
 ### End-to-end coverage (maps to the required flows)
 
-Owner login · wrong-password generic error · anonymous redirect + 401 APIs/SSE · HR Staff read-only (UI hidden **and** direct API 403, `/settings` and `/users` forbidden) · HR Admin limits · create → edit → issue QR → public verify → deactivate (verify shows Inactive) → reactivate → revoke (verify shows Revoked) · expired ID never shows Verified · unknown/malformed tokens · search by name/ID, pagination, empty state · audit log visibility incl. sign-ins · **live update across two browser sessions without reload** · sign-out + old-cookie replay rejected · mobile 375 px no horizontal overflow · skip link + focus · security headers.
+Workforce: employee login lands on `/me` · HR pages and HR APIs refused to employees (redirect / 403) · punch in → HR "Currently working" KPI changes **live** → duplicate punch-in rejected (409) and client timestamps rejected (422) → sign-out guard → punch out · HR resolves a missed punch-out (audited before/after) · employee correction request → HR applies → employee sees "Approved" · task created with the people picker → employee starts and submits → HR approves → completed view + unread notification · leave applied → HR approves → status updates · team manager sees the team, cannot assign departments · invitation link single-use, password set, login lands in the workspace.
+
+Directory and verification: Owner login · wrong-password generic error · anonymous redirect + 401 APIs/SSE · HR Staff read-only (UI hidden **and** direct API 403, `/settings` and `/users` forbidden) · HR Admin limits · create → edit → issue QR → public verify → deactivate (verify shows Inactive) → reactivate → revoke (verify shows Revoked) · expired ID never shows Verified · unknown/malformed tokens · search by name/ID, pagination, empty state · audit log visibility incl. sign-ins · **live update across two browser sessions without reload** · sign-out + old-cookie replay rejected · mobile 375 px no horizontal overflow · skip link + focus · security headers.
 
 ## Load and concurrency (measured)
 
@@ -72,6 +75,9 @@ Raw JSON results: `tests/load/results/load-*.json` (git-ignored; regenerate with
 5. Hub dropped events after an outbox sequence reset (e.g. DB restore) — reset detection and id+timestamp de-duplication.
 6. Build failed when `DATABASE_URL` was absent — Prisma client now created lazily.
 7. Tailwind was not compiled after a config change — switched to the PostCSS plugin.
+8. (Workforce) Workspace roles could hold extra permissions if any were stored on the account — workspace roles now ignore extra grants.
+9. (Workforce) On the filtered "No login" list the one-time invitation link vanished before it could be copied — the list now refreshes after the link dialog closes.
+10. (Workforce) Correction dialogs reused element ids, so labels pointed at hidden fields (accessibility) — ids are now unique per dialog.
 
 ## Implementation checklist
 
@@ -90,5 +96,6 @@ Raw JSON results: `tests/load/results/load-*.json` (git-ignored; regenerate with
 - [x] Official logo asset
 - [x] Free-tier deployment (Render + Neon); custom domain, paid backups awaiting owner approval
 - [x] Group employee directory (companies, Management role, employment details, reporting lines, exit + history, compensation, documents)
-- [ ] Email flows (password reset) — not implemented; owner resets passwords
+- [x] Workforce management: employee logins (invitations, reset links), employee workspace, attendance, corrections, tasks, leave, notifications, announcements, row-level security
+- [ ] Email delivery of invitations/resets/notifications — links are shared manually for now (no email provider)
 - [ ] External penetration test

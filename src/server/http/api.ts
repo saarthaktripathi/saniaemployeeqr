@@ -121,4 +121,23 @@ export function authed<P = Record<string, string>>(handler: (c: ApiContext<P>) =
   };
 }
 
+/**
+ * Wraps an unauthenticated route handler (invitation and password-reset links): same-origin
+ * check for mutations and safe error mapping. Handlers must rate limit themselves.
+ */
+export function publicRoute<P = Record<string, string>>(handler: (c: { req: NextRequest; ctx: RequestContext; params: P }) => Promise<Response>) {
+  return async (req: NextRequest, route: { params: Promise<P> }) => {
+    const ctx = requestContextFromHeaders(req.headers);
+    try {
+      assertSameOrigin(req);
+      const res = await handler({ req, ctx, params: await route.params });
+      res.headers.set("x-request-id", ctx.requestId);
+      res.headers.set("Referrer-Policy", "no-referrer");
+      return res;
+    } catch (err) {
+      return errorResponse(err, ctx.requestId);
+    }
+  };
+}
+
 export { db };

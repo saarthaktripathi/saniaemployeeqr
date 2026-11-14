@@ -1,20 +1,27 @@
 import { ShieldCheck } from "lucide-react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { Logo } from "@/components/layout/logo";
 import { MobileNav, Sidebar, type NavItem } from "@/components/layout/nav";
 import { SIDEBAR_COOKIE } from "@/lib/ui-prefs";
 import { Notifications } from "@/components/layout/notifications";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { LiveIndicator, RealtimeProvider } from "@/components/layout/realtime";
 import { UserMenu } from "@/components/layout/user-menu";
 import { requirePageActor } from "@/server/auth/session";
-import { can, ROLE_LABELS, type Permission } from "@/server/authorization/permissions";
+import { can, isWorkspaceRole, ROLE_LABELS, type Permission } from "@/server/authorization/permissions";
 
 const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/dashboard", label: "Employee Directory", icon: "directory", permission: "employee:read" },
+  { href: "/attendance", label: "Attendance Management", icon: "attendance", permission: "attendance:read" },
+  { href: "/tasks", label: "Task Management", icon: "tasks", permission: "task:read" },
+  { href: "/leave", label: "Leave Management", icon: "leave", permission: "leave:read" },
   { href: "/employees/new", label: "Add Employee", icon: "add", permission: "employee:create" },
   { href: "/employees/import", label: "Bulk Import", icon: "import", permission: "employee:create" },
+  { href: "/announcements", label: "Announcements", icon: "announce", permission: "announcement:send" },
   { href: "/activity", label: "Activity Log", icon: "activity", permission: "audit:read" },
   { href: "/companies", label: "Companies", icon: "companies", permission: "company:manage" },
+  { href: "/accounts", label: "Employee Access", icon: "access", permission: "account:manage" },
   { href: "/settings", label: "System Rules", icon: "rules", permission: "settings:manage" },
   { href: "/users", label: "Users & Access", icon: "users", permission: "users:manage" },
   { href: "/account/security", label: "Account Security", icon: "security" },
@@ -24,6 +31,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
   // allowWithoutMfa: the layout must render for the MFA enrolment page itself;
   // every page below calls requirePageActor() again with the MFA check enforced.
   const { actor } = await requirePageActor(undefined, { allowWithoutMfa: true });
+  // Employees and team managers never see the HR console; they have their own workspace.
+  if (isWorkspaceRole(actor.role)) redirect("/me");
   // Menu visibility is cosmetic; every page and API re-checks permissions server-side.
   const items = NAV.filter((n) => !n.permission || can(actor, n.permission)).map(({ href, label, icon }) => ({ href, label, icon }));
   const user = { name: actor.name, role: ROLE_LABELS[actor.role] };
@@ -51,7 +60,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </div>
               <div className="flex items-center gap-1.5 sm:gap-3">
                 {can(actor, "audit:read") && <Notifications />}
-                <UserMenu name={user.name} role={user.role} />
+                <NotificationBell href="/notifications" />
+                <UserMenu name={user.name} role={user.role} workspaceHref={actor.employeeId ? "/me" : undefined} />
               </div>
             </div>
           </header>

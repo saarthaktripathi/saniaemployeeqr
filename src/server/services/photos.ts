@@ -8,6 +8,7 @@ import type { Actor, RequestContext } from "./context";
 import { recordAudit } from "./audit";
 import { emitEvent } from "./outbox";
 import { authorize } from "./authorize";
+import { canViewEmployee } from "./team";
 
 // ---------------------------------------------------------------------------
 // Storage. Photos live in their own table (never in the employee row) behind this
@@ -131,7 +132,8 @@ export async function removeEmployeePhoto(db: Db, actor: Actor, id: string, ctx:
 }
 
 export async function getEmployeePhoto(db: Db, actor: Actor, id: string, size: "full" | "thumb", ctx: RequestContext) {
-  await authorize(db, actor, "employee:read", ctx, { type: "employee", id });
+  // HR with directory access, the employee themselves, or their team manager.
+  if (!(await canViewEmployee(db, actor, id))) await authorize(db, actor, "employee:read", ctx, { type: "employee", id });
   const employee = await db.employee.findUnique({ where: { id }, select: { photoKey: true, photoUpdatedAt: true } });
   const photo = employee?.photoKey ? await store.get(db, employee.photoKey, size) : null;
   if (!photo) throw notFound("Photo");

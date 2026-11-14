@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell } from "lucide-react";
+import { History } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { cn, formatDateTime } from "@/lib/cn";
 import { AUDIT_LABELS } from "@/components/audit/audit-list";
@@ -85,12 +85,13 @@ export function Notifications() {
       <button
         type="button"
         onClick={toggle}
-        aria-label={unread ? `Notifications, ${unread} new` : "Notifications"}
+        aria-label={unread ? `Recent activity, ${unread} new` : "Recent activity"}
+        title="Recent activity"
         aria-expanded={open}
         aria-haspopup="true"
         className="relative grid size-9 place-items-center rounded-lg text-ink-muted transition-colors hover:bg-navy-100 hover:text-ink"
       >
-        <Bell className="size-[18px]" aria-hidden />
+        <History className="size-[18px]" aria-hidden />
         {unread > 0 && (
           <span className="absolute top-1 right-1 grid min-w-4 place-items-center rounded-full bg-gradient-to-br from-violet-600 to-primary-600 px-1 text-[10px] leading-4 font-bold text-white">
             {unread > 9 ? "9+" : unread}

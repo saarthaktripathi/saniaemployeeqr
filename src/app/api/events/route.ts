@@ -1,7 +1,7 @@
 import { authed } from "@/server/http/api";
-import { can, type Permission } from "@/server/authorization/permissions";
 import { getActorFromHeaders } from "@/server/auth/session";
 import { hub, replaySince, type HubEvent } from "@/server/realtime/hub";
+import { canReceive } from "@/server/realtime/audience";
 import { AppError } from "@/lib/errors";
 
 export const runtime = "nodejs";
@@ -11,12 +11,12 @@ const HEARTBEAT_MS = 20_000;
 const REAUTH_MS = 60_000;
 
 /**
- * Server-Sent Events stream of minimal change notifications for the dashboard.
- * Authenticated; each event is filtered by the subscriber's permissions. The
+ * Server-Sent Events stream of minimal change notifications (HR console and employee workspace).
+ * Authenticated; each event is filtered by audience or by the subscriber's permissions. The
  * session is re-checked periodically so revoked users are disconnected.
  */
 export const GET = authed(async ({ req, actor }) => {
-  if (!can(actor, "dashboard:read")) throw new AppError("FORBIDDEN", "Not allowed");
+  if (!actor) throw new AppError("UNAUTHENTICATED", "Sign in required");
   const lastIdHeader = req.headers.get("last-event-id") ?? req.nextUrl.searchParams.get("lastEventId");
   const lastId = lastIdHeader && /^\d{1,19}$/.test(lastIdHeader) ? BigInt(lastIdHeader) : null;
   const encoder = new TextEncoder();
@@ -36,13 +36,13 @@ export const GET = authed(async ({ req, actor }) => {
         }
       };
       const deliver = (e: HubEvent) => {
-        const scope = (e.payload.scope as Permission | undefined) ?? "employee:read";
-        if (!can(actor, scope)) return;
+        if (!canReceive(actor, e.payload)) return;
         const data = {
           type: e.type,
           at: e.at,
           employeeId: e.payload.employeeId ?? null,
           credentialId: e.payload.credentialId ?? null,
+          taskId: e.payload.taskId ?? null,
         };
         send(`id: ${e.id}\nevent: change\ndata: ${JSON.stringify(data)}\n\n`);
       };

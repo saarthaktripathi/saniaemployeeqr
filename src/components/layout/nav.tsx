@@ -3,11 +3,55 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Building2, ChevronsLeft, CirclePlus, CloudUpload, History, LockKeyhole, Menu, ShieldCheck, Target, UserCog, Users, X } from "lucide-react";
+import {
+  Bell,
+  Building2,
+  CalendarCheck2,
+  CalendarDays,
+  ChevronsLeft,
+  CirclePlus,
+  Clock,
+  CloudUpload,
+  History,
+  KeyRound,
+  LayoutDashboard,
+  ListChecks,
+  LockKeyhole,
+  Megaphone,
+  Menu,
+  Settings,
+  ShieldCheck,
+  Target,
+  UserCog,
+  UserRound,
+  Users,
+  UsersRound,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/cn";
 import { SIDEBAR_COOKIE } from "@/lib/ui-prefs";
 
-const ICONS = { directory: Users, add: CirclePlus, import: CloudUpload, activity: History, companies: Building2, rules: ShieldCheck, users: UserCog, security: LockKeyhole };
+const ICONS = {
+  directory: Users,
+  add: CirclePlus,
+  import: CloudUpload,
+  activity: History,
+  companies: Building2,
+  rules: ShieldCheck,
+  users: UserCog,
+  security: LockKeyhole,
+  access: KeyRound,
+  home: LayoutDashboard,
+  attendance: Clock,
+  tasks: ListChecks,
+  calendar: CalendarDays,
+  leave: CalendarCheck2,
+  profile: UserRound,
+  notifications: Bell,
+  settings: Settings,
+  team: UsersRound,
+  announce: Megaphone,
+};
 
 export interface NavItem {
   href: string;
@@ -16,6 +60,8 @@ export interface NavItem {
 }
 
 function isActive(pathname: string, href: string) {
+  // Workspace home and team overview match exactly; their sections have their own entries.
+  if (href === "/me" || href === "/me/team") return pathname === href;
   if (href === "/dashboard") return pathname === "/dashboard" || (pathname.startsWith("/employees/") && !pathname.startsWith("/employees/new") && !pathname.startsWith("/employees/import"));
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -103,7 +149,7 @@ function SidebarArt() {
 }
 
 /** Desktop sidebar. Collapsed state is stored in a cookie so the server renders the right width (no layout shift). */
-export function Sidebar({ items, logo, initialCollapsed }: { items: NavItem[]; logo: ReactNode; initialCollapsed: boolean }) {
+export function Sidebar({ items, logo, initialCollapsed, homeHref = "/dashboard", quote }: { items: NavItem[]; logo: ReactNode; initialCollapsed: boolean; homeHref?: string; quote?: string }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const toggle = () => {
     const next = !collapsed;
@@ -119,7 +165,7 @@ export function Sidebar({ items, logo, initialCollapsed }: { items: NavItem[]; l
       data-collapsed={collapsed}
     >
       <SidebarArt />
-      <Link href="/dashboard" className={cn("relative mb-8 block rounded-md px-1", collapsed && "[&_.leading-tight]:hidden")}>
+      <Link href={homeHref} className={cn("relative mb-8 block rounded-md px-1", collapsed && "[&_.leading-tight]:hidden")}>
         {logo}
       </Link>
       <div className="relative">
@@ -131,7 +177,7 @@ export function Sidebar({ items, logo, initialCollapsed }: { items: NavItem[]; l
             <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-[#6d6af5] to-[#8b5cf6] shadow-lg">
               <Target className="size-[18px]" aria-hidden />
             </span>
-            <blockquote className="mt-3 text-[13px] leading-relaxed text-white/90">Great teams aren&apos;t built by chance, they&apos;re built by great people.</blockquote>
+            <blockquote className="mt-3 text-[13px] leading-relaxed text-white/90">{quote ?? "Great teams aren\u2019t built by chance, they\u2019re built by great people."}</blockquote>
             <svg viewBox="0 0 60 10" className="mt-2 ml-auto h-2.5 w-12" fill="none" aria-hidden>
               <path d="M1 7 C 8 1, 14 9, 21 5 S 34 1, 40 6 S 52 9, 59 2" stroke="#818cf8" strokeWidth="1.6" strokeLinecap="round" />
             </svg>

@@ -1,5 +1,7 @@
 # Data model
 
+> **Workforce management (2026-11-14):** attendance, tasks, leave, notifications, employee logins and row-level security are documented in [DATABASE_DESIGN.md](DATABASE_DESIGN.md).
+
 Source of truth: `prisma/schema.prisma` and `prisma/migrations/`. Hand-written SQL in the first migration adds constraints Prisma can't express.
 
 ## Tables

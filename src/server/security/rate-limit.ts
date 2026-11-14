@@ -16,6 +16,10 @@ export const RATE_RULES = {
   photoUpload: { window: 60, max: 30 },
   documentUpload: { window: 60, max: 30 },
   export: { window: 300, max: 10 },
+  accountLink: { window: 60, max: 30 },
+  tokenRedeem: { window: 300, max: 20 },
+  punch: { window: 60, max: 12 },
+  selfService: { window: 60, max: 60 },
 } satisfies Record<string, RateRule>;
 
 /**

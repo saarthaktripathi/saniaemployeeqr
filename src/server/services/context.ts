@@ -8,6 +8,8 @@ export interface Actor {
   role: Role;
   extraPermissions: string[];
   twoFactorEnabled: boolean;
+  /** Linked employee record (self-service access), or null for accounts without one. */
+  employeeId: string | null;
 }
 
 /** Per-request metadata passed to services for auditing and rate limiting. */
@@ -21,4 +23,4 @@ export const systemContext = (requestId = "system"): RequestContext => ({ reques
 /** Actor id used by CLI bootstrap/seed scripts; audited with a null actor and role SYSTEM. */
 export const SYSTEM_ACTOR_ID = "system";
 
-export const systemActor = (): Actor => ({ id: SYSTEM_ACTOR_ID, email: "system", name: "System", role: "OWNER", extraPermissions: [], twoFactorEnabled: false });
+export const systemActor = (): Actor => ({ id: SYSTEM_ACTOR_ID, email: "system", name: "System", role: "OWNER", extraPermissions: [], twoFactorEnabled: false, employeeId: null });

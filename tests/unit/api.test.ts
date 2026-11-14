@@ -15,7 +15,7 @@ const { authed, errorResponse, json, readJson, readText } = await import("@/serv
 const { uuidParam } = await import("@/server/http/params");
 
 const ORIGIN = "https://verify.example.test";
-const actor: Actor = { id: "u1", email: "o@x", name: "Owner", role: "OWNER", extraPermissions: [], twoFactorEnabled: true };
+const actor: Actor = { id: "u1", email: "o@x", name: "Owner", role: "OWNER", extraPermissions: [], twoFactorEnabled: true, employeeId: null };
 const req = (init: { method?: string; headers?: Record<string, string>; body?: string } = {}) =>
   new NextRequest(`${ORIGIN}/api/x`, { method: init.method ?? "GET", headers: init.headers, body: init.body });
 const ok = authed(async ({ actor }) => json({ hello: actor.name }));

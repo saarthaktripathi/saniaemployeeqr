@@ -10,6 +10,8 @@ process.env.SEED_OWNER_PASSWORD ??= `E2e-${randomBytes(9).toString("base64url")}
 process.env.SEED_HRADMIN_PASSWORD ??= `E2e-${randomBytes(9).toString("base64url")}`;
 process.env.SEED_HRSTAFF_PASSWORD ??= `E2e-${randomBytes(9).toString("base64url")}`;
 process.env.SEED_MANAGEMENT_PASSWORD ??= `E2e-${randomBytes(9).toString("base64url")}`;
+process.env.SEED_MANAGER_PASSWORD ??= `E2e-${randomBytes(9).toString("base64url")}`;
+process.env.SEED_EMPLOYEE_PASSWORD ??= `E2e-${randomBytes(9).toString("base64url")}`;
 
 // Per-run secrets shared by the server and the seed (seeded QR tokens must decrypt on the server).
 // Set once in process.env so the config's re-evaluation in workers reuses the same values.

@@ -4,7 +4,7 @@ This document describes what the platform protects, the threats considered, the 
 
 ## Assets
 
-1. Employee personal data (names, work email, phone, job details, reporting lines, exit reasons).
+1. Employee personal data (names, work email, phone, job details, reporting lines, exit reasons), attendance records, tasks and leave requests.
 2. Restricted HR records: compensation (salary/stipend/fee) and uploaded documents (contracts, ID proofs).
 3. Credential tokens (anyone holding one can see that employee's public status).
 4. HR/owner accounts and sessions (full control of records and credentials).
@@ -41,6 +41,12 @@ This document describes what the platform protects, the threats considered, the 
 | Photo enumeration | HR photo API needs a session and `employee:read`. The public page never exposes a photo URL — the image is inlined only after the opaque QR token resolves, and only if System Rules allow it | Integration test |
 | Salary disclosure | Separate permissions (`compensation:read` / `compensation:manage`), Owner-only by default and granted per user; holders count as privileged for the MFA policy; values fetched only on an explicit **Show** (not on page render or live refresh), each read audited as a security event (`compensation.viewed`, owner-visible); amounts never written to the audit log, events, exports or public pages; `DECIMAL` storage (no float rounding) | Integration + e2e tests |
 | Malicious document uploads / document leakage | `document:manage` to upload, `document:read` to list/download (Owner + HR Admin; grantable); type decided by magic bytes (PDF/JPEG/PNG/WebP only), ≤ 5 MB streamed limit, file name stripped of paths/control characters with the extension forced to the real type; served as `attachment` (images may be shown inline) with `nosniff`, `Content-Security-Policy: default-src 'none'; sandbox` and `no-store`; metadata sent in a header so names stay out of URLs and access logs; downloads audited | Integration + e2e tests |
+| Employee reading or changing another employee's attendance, tasks, leave or notifications (IDOR) | Services check self / team / permission first; underneath, every workforce query runs in `withRls()` as the `sania_rls` role with PostgreSQL row-level security (self, reporting tree for team managers, organisation scopes for HR). Salary, documents, credentials, sessions and password hashes have no grants to that role at all | Integration tests run raw SQL as the RLS role for several actors; e2e calls HR APIs as an employee (403) |
+| Attendance tampering (back-dating, double punches) | Timestamps generated on the server only (client fields rejected by strict schemas); per-employee advisory lock; unique "one open session" index and a no-overlap exclusion constraint; append-only `attendance_event` (trigger); every correction stores before/after and is audited | Concurrency test (4 simultaneous punch-ins → 1 session); constraint tests; e2e 409/422 checks |
+| Privilege escalation through invitations or role changes | Invitations can only grant Employee or Team Manager; HR administrators cannot touch Owner/HR accounts (`users:manage` is owner-only); workspace roles ignore extra permissions; role changes revoke sessions | Integration + unit tests |
+| Invitation / reset link theft | 256-bit single-use tokens, only SHA-256 hashes stored, 7-day / 24-hour expiry, atomic claim, rate-limited redemption, `Referrer-Policy: no-referrer` and `no-store` on token pages; a reset signs the account out everywhere | Integration tests (reuse, expiry, revoke) and e2e |
+| Leaked access after exit | Employee logins require an active, non-archived employee record on every request and at sign-in | Integration test |
+| Malicious task attachments | Same controls as employee documents (content sniffing, 5 MB, sanitised names, attachment download, sandbox CSP); deliverables visible only to the assignee thread, the creator and HR (RLS) | Integration tests |
 | Reporting-line corruption | Manager must exist, not be archived and not be the employee; recursive check rejects loops; concurrent changes serialised by a transaction-scoped advisory lock | Integration tests |
 | DoS via large/expensive requests | 64 KB JSON / 1 MB CSV body limits; page size ≤ 100; query length ≤ 100; 15 s statement timeout; bulk ≤ 200/500 rows; rate limits on creation, issuance, bulk, export | Unit tests |
 | Audit tampering | DB triggers block UPDATE/DELETE on `audit_log`; purge requires `SET LOCAL app.audit_purge='on'` | Integration tests |
@@ -56,7 +62,9 @@ This document describes what the platform protects, the threats considered, the 
 - **Documents are not virus-scanned.** Only PDF and image types are accepted (checked by content) and they are always downloaded, never executed by the app, but a PDF could still carry malicious content for the reader's PDF viewer. Add scanning (e.g. ClamAV or the object store's scanning) before accepting files from outside HR.
 - **Compensation and documents live in the same database as everything else** (encrypted at rest by the provider, not by the app). Database administrators can read them; restrict database access accordingly.
 - **MFA is enforced only when "Require MFA" is on** (default on; off in the local demo seed). Recovery for lost authenticators = owner resets the password and the user re-enrols; backup codes are shown once.
-- **No email flows yet** (password reset, verification). Owners reset passwords manually. If email is added, tokens must be single-use and expiring.
+- **No email delivery yet.** Invitation and password-reset links are single-use, hashed and expiring, but HR shares them manually (e.g. WhatsApp). Treat chats containing links as sensitive; a link can be revoked or replaced from Employee Access.
+- **Row-level security covers the workforce tables and `employee` reads inside `withRls()`.** The app's own owner connection bypasses RLS (needed for HR features and the system sweeps), so a new service that skips `withRls()` is protected only by its permission checks. Production must allow the app's login role to `SET ROLE sania_rls` (verified on a Neon branch before deployment, see DEPLOYMENT_READINESS.md).
+- **Work location is self-declared** (no GPS/IP fencing); every punch is audited with the chosen location.
 - **`style-src 'unsafe-inline'`** is allowed (toast library, inline style props). Scripts are nonce-locked.
 - **Dependencies**: `npm audit --omit=dev` reported 0 known vulnerabilities on 2026-10-29. Re-run in CI on every change.
 
@@ -72,7 +80,7 @@ This document describes what the platform protects, the threats considered, the 
 
 ## What was tested vs not
 
-**Tested automatically:** cross-role access (service + HTTP + UI), direct API bypass, malformed/unknown/expired/revoked tokens, injection-shaped input, oversize bodies, rate limits (verification), CSRF origin checks, unauthenticated SSE, session invalidation on sign-out, audit immutability, data minimization in public responses and events, compensation and document permissions per role (service + direct API + UI), compensation amounts absent from audit/events/exports, document type sniffing and file-name sanitising, reporting-loop rejection.
+**Tested automatically:** cross-role access (service + HTTP + UI), direct API bypass, malformed/unknown/expired/revoked tokens, injection-shaped input, oversize bodies, rate limits (verification), CSRF origin checks, unauthenticated SSE, session invalidation on sign-out, audit immutability, data minimization in public responses and events, compensation and document permissions per role (service + direct API + UI), compensation amounts absent from audit/events/exports, document type sniffing and file-name sanitising, reporting-loop rejection, database row-level security per actor (employee, team manager, HR), cross-employee writes rejected by policy, concurrent punch-ins, server-only timestamps, invitation/reset token reuse and expiry, employee access to HR pages and APIs.
 
 **Not tested:** real-world attacker tooling (DAST/fuzzing), TOTP enrolment via a real authenticator in e2e, multi-instance deployment, behaviour under network partitions, infrastructure configuration of the eventual host.
 

@@ -22,13 +22,18 @@ export default async function globalSetup() {
   await c.query("BEGIN");
   await c.query("SET LOCAL app.audit_purge = 'on'");
   await c.query(
-    `TRUNCATE "verification_event", "employee_credential", "employee", "employee_code_counter", "outbox_event", "session", "account", "twoFactor", "verification", "rateLimit", "app_rate_limit" RESTART IDENTITY CASCADE`,
+    `TRUNCATE "task_history", "task_file_blob", "task_file", "task_comment", "task_assignment", "task", "leave_request", "attendance_event", "attendance_correction", "attendance_session", "holiday", "notification", "announcement", "account_token", "verification_event", "employee_credential", "employee", "employee_code_counter", "outbox_event", "session", "account", "twoFactor", "verification", "rateLimit", "app_rate_limit" RESTART IDENTITY CASCADE`,
   );
   await c.query(`DELETE FROM "audit_log"`);
   await c.query(`DELETE FROM "user"`);
   // Keep only the primary company created by the migration; the seed adds the others.
   await c.query(`DELETE FROM "company" WHERE "id" <> (SELECT "id" FROM "company" ORDER BY "createdAt", "id" LIMIT 1)`);
   await c.query(`UPDATE "company" SET "isActive" = true`);
+  // Default attendance rules and leave quotas (tests may change them).
+  await c.query(`DELETE FROM "attendance_policy"`);
+  await c.query(`INSERT INTO "attendance_policy" ("id", "updatedAt") VALUES (1, CURRENT_TIMESTAMP)`);
+  await c.query(`DELETE FROM "leave_type" WHERE "code" NOT IN ('CL', 'SL', 'EL', 'LOP')`);
+  await c.query(`UPDATE "leave_type" SET "isActive" = true, "annualQuota" = CASE "code" WHEN 'CL' THEN 12 WHEN 'SL' THEN 12 WHEN 'EL' THEN 15 ELSE NULL END`);
   await c.query("COMMIT");
   await c.end();
 

@@ -13,11 +13,18 @@ export default async function UsersPage() {
   const users = await listUsers(db, actor, ctx);
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader eyebrow="Owner controls" title="Users & Access" description="Create HR accounts, assign roles and grant individual permissions. Changes revoke the user's active sessions." />
+      <PageHeader eyebrow="Owner controls" title="Users & Access" description="Create HR accounts, assign roles and grant individual permissions. Employee logins are created by invitation from Employee Access. Changes revoke the user's active sessions." />
       <UsersManager
         currentUserId={actor.id}
         grantable={GRANTABLE}
-        rolePermissions={{ OWNER: [...ROLE_PERMISSIONS.OWNER], HR_ADMIN: [...ROLE_PERMISSIONS.HR_ADMIN], HR_STAFF: [...ROLE_PERMISSIONS.HR_STAFF], MANAGEMENT: [...ROLE_PERMISSIONS.MANAGEMENT] }}
+        rolePermissions={{
+          OWNER: [...ROLE_PERMISSIONS.OWNER],
+          HR_ADMIN: [...ROLE_PERMISSIONS.HR_ADMIN],
+          HR_STAFF: [...ROLE_PERMISSIONS.HR_STAFF],
+          MANAGEMENT: [...ROLE_PERMISSIONS.MANAGEMENT],
+          TEAM_MANAGER: [],
+          EMPLOYEE: [],
+        }}
         users={users.map((u) => ({ ...u, twoFactorEnabled: Boolean(u.twoFactorEnabled), createdAt: u.createdAt.toISOString() }))}
       />
     </div>

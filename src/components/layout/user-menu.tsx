@@ -2,12 +2,27 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, LockKeyhole, LogOut } from "lucide-react";
+import { Briefcase, ChevronDown, LayoutDashboard, LockKeyhole, LogOut } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { cn, initials } from "@/lib/cn";
 
-/** Header account button: avatar, name and role, with Account Security and Sign out. */
-export function UserMenu({ name, role }: { name: string; role: string }) {
+/** Header account button: avatar, name and role, with Account Security, My workspace (when linked) and Sign out. */
+export function UserMenu({
+  name,
+  role,
+  workspaceHref,
+  consoleHref,
+  securityHref = "/account/security",
+  onBeforeSignOut,
+}: {
+  name: string;
+  role: string;
+  workspaceHref?: string;
+  consoleHref?: string;
+  securityHref?: string;
+  /** Return false to cancel sign-out (e.g. the attendance logout guard took over). */
+  onBeforeSignOut?: () => Promise<boolean> | boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -54,7 +69,17 @@ export function UserMenu({ name, role }: { name: string; role: string }) {
           <p className="text-sm font-semibold text-ink">{name}</p>
           <p className="text-xs text-ink-subtle">{role}</p>
         </div>
-        <Link href="/account/security" role="menuitem" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-navy-100/70">
+        {workspaceHref && (
+          <Link href={workspaceHref} role="menuitem" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-navy-100/70">
+            <LayoutDashboard className="size-4 text-ink-muted" aria-hidden /> My workspace
+          </Link>
+        )}
+        {consoleHref && (
+          <Link href={consoleHref} role="menuitem" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-navy-100/70">
+            <Briefcase className="size-4 text-ink-muted" aria-hidden /> HR console
+          </Link>
+        )}
+        <Link href={securityHref} role="menuitem" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-ink hover:bg-navy-100/70">
           <LockKeyhole className="size-4 text-ink-muted" aria-hidden /> Account security
         </Link>
         <button
@@ -62,6 +87,8 @@ export function UserMenu({ name, role }: { name: string; role: string }) {
           role="menuitem"
           disabled={busy}
           onClick={async () => {
+            setOpen(false);
+            if (onBeforeSignOut && !(await onBeforeSignOut())) return;
             setBusy(true);
             await authClient.signOut();
             // Full page load on purpose: discards all client-side state after the session ends.

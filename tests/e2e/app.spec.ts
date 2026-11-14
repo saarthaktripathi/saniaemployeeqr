@@ -42,7 +42,7 @@ test.describe("authentication and access control", () => {
 
   test("wrong password shows a generic error", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("Work email").fill(ACCOUNTS.owner.email);
+    await page.getByRole("textbox", { name: "Email", exact: true }).fill(ACCOUNTS.owner.email);
     await page.getByLabel("Password").fill("definitely-not-it");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "Invalid" })).toHaveText("Invalid email or password.");
@@ -421,7 +421,7 @@ test.describe("interactive dashboard", () => {
     await page.reload();
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
     await page.getByRole("button", { name: "Expand sidebar" }).click();
-    await page.getByRole("button", { name: /^Notifications/ }).click();
+    await page.getByRole("button", { name: /^Recent activity/ }).click();
     const menu = page.getByRole("menu");
     await expect(menu.getByText("Recent activity")).toBeVisible();
     await expect(menu.locator("li").first()).not.toHaveText(/Loading|No activity yet/);
