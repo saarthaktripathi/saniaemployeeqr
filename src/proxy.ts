@@ -34,7 +34,8 @@ export function proxy(request: NextRequest) {
 
   if (PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     if (!getSessionCookie(request, { cookiePrefix: "sjb" })) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const isWorkspace = pathname === "/me" || pathname.startsWith("/me/");
+      return NextResponse.redirect(new URL(isWorkspace ? "/login?portal=employee" : "/login", request.url));
     }
   }
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShieldCheck, UserRound } from "lucide-react";
 import { Logo } from "@/components/layout/logo";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -9,12 +10,21 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
           <Link href="/" className="rounded-md">
             <Logo tone="light" />
           </Link>
-          <nav aria-label="Public" className="flex items-center gap-1 text-sm">
-            <Link href="/" className="rounded-md px-3 py-2 font-medium text-white/85 hover:bg-white/10 hover:text-white">
+          <nav aria-label="Public" className="flex flex-wrap items-center gap-1.5 text-sm">
+            <Link href="/" className="hidden rounded-md px-3 py-2 font-medium text-white/85 hover:bg-white/10 hover:text-white sm:block">
               Verify an Employee
             </Link>
-            <Link href="/login" className="rounded-md border border-white/25 px-3 py-2 font-medium text-white hover:bg-white/10">
-              Authorized HR Login
+            <Link
+              href="/login?portal=employee"
+              className="inline-flex items-center gap-1.5 rounded-md bg-teal-700 px-3 py-2 font-medium text-white hover:bg-teal-800"
+            >
+              <UserRound className="size-4" aria-hidden /> Employee Login
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 font-medium text-white hover:bg-white/10"
+            >
+              <ShieldCheck className="size-4" aria-hidden /> Authorized HR Login
             </Link>
           </nav>
         </div>

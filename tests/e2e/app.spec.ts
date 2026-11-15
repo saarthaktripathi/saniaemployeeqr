@@ -40,6 +40,45 @@ test.describe("authentication and access control", () => {
     expect((await request.get("/api/events")).status()).toBe(401);
   });
 
+  test("the landing page's Employee Login button opens the employee workspace", async ({ browser }) => {
+    const ctx = await browser.newContext({ extraHTTPHeaders: { "X-Forwarded-For": "198.51.100.88" } });
+    const page = await ctx.newPage();
+    await page.goto("/");
+    await page.getByRole("navigation", { name: "Public" }).getByRole("link", { name: "Employee Login" }).click();
+    await expect(page).toHaveURL(/\/login\?portal=employee$/);
+    await expect(page.getByRole("heading", { name: "Employee login" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Sign-in portal" }).getByRole("link", { name: "Employee" })).toHaveAttribute("aria-current", "page");
+    await page.getByRole("textbox", { name: "Email", exact: true }).fill(ACCOUNTS.employee.email);
+    await page.getByLabel("Password").fill(ACCOUNTS.employee.password());
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/me$/);
+    // Already signed in: the employee portal goes straight back to the workspace.
+    await page.goto("/login?portal=employee");
+    await expect(page).toHaveURL(/\/me$/);
+    await ctx.close();
+  });
+
+  test("HR login keeps its portal; HR without an employee record lands on the console from the employee portal", async ({ browser }) => {
+    const ctx = await browser.newContext({ extraHTTPHeaders: { "X-Forwarded-For": "198.51.100.89" } });
+    const page = await ctx.newPage();
+    await page.goto("/");
+    await page.getByRole("navigation", { name: "Public" }).getByRole("link", { name: "Authorized HR Login" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole("heading", { name: "HR login" })).toBeVisible();
+    await page.getByRole("navigation", { name: "Sign-in portal" }).getByRole("link", { name: "Employee" }).click();
+    await expect(page.getByRole("heading", { name: "Employee login" })).toBeVisible();
+    await page.getByRole("textbox", { name: "Email", exact: true }).fill(ACCOUNTS.hradmin.email);
+    await page.getByLabel("Password").fill(ACCOUNTS.hradmin.password());
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+    await ctx.close();
+  });
+
+  test("anonymous visits to the employee workspace go to the employee login", async ({ page }) => {
+    await page.goto("/me/tasks");
+    await expect(page).toHaveURL(/\/login\?portal=employee$/);
+  });
+
   test("wrong password shows a generic error", async ({ page }) => {
     await page.goto("/login");
     await page.getByRole("textbox", { name: "Email", exact: true }).fill(ACCOUNTS.owner.email);

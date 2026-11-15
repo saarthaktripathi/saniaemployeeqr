@@ -18,7 +18,7 @@ async function signOutNow() {
   await authClient.signOut();
   // Full page load on purpose: discards all client-side state after the session ends.
   // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-  window.location.assign("/login");
+  window.location.assign("/login?portal=employee");
 }
 
 /**

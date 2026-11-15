@@ -15,7 +15,8 @@ function messageFor(status: number | undefined): string {
   return "Invalid email or password.";
 }
 
-export function LoginForm() {
+/** `redirectTo` is a fixed in-app path chosen by the login page, never taken from the URL. */
+export function LoginForm({ redirectTo = "/home" }: { redirectTo?: string }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("password");
   const [email, setEmail] = useState("");
@@ -38,7 +39,7 @@ export function LoginForm() {
       setStep("totp");
       return;
     }
-    router.replace("/home");
+    router.replace(redirectTo);
     router.refresh();
   }
 
@@ -55,7 +56,7 @@ export function LoginForm() {
       setError(res.error.status === 429 ? messageFor(429) : "That code is not valid. Try again.");
       return;
     }
-    router.replace("/home");
+    router.replace(redirectTo);
     router.refresh();
   }
 
