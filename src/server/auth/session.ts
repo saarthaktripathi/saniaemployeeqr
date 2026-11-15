@@ -5,6 +5,7 @@ import { db } from "@/server/db/client";
 import { can, isWorkspaceRole, requiresMfa, type Permission, type Role } from "@/server/authorization/permissions";
 import type { Actor, RequestContext } from "@/server/services/context";
 import { getSettings } from "@/server/services/settings";
+import { mfaEnabled } from "@/lib/env";
 import { getAuth } from "./auth";
 import { requestContextFromHeaders } from "./request";
 import { accountAllowsAccess, employeeAllowsAccess } from "./access";
@@ -43,7 +44,7 @@ export async function getActorFromHeaders(h: Headers): Promise<Actor | null> {
 }
 
 export async function mfaSetupRequired(actor: Actor): Promise<boolean> {
-  if (!requiresMfa(actor) || actor.twoFactorEnabled) return false;
+  if (!mfaEnabled() || !requiresMfa(actor) || actor.twoFactorEnabled) return false;
   return (await getSettings(db)).requireMfaForPrivileged;
 }
 

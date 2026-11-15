@@ -5,6 +5,7 @@ import { listUsers } from "@/server/services/users";
 import { GRANTABLE, ROLE_PERMISSIONS } from "@/server/authorization/permissions";
 import { PageHeader } from "@/components/ui/primitives";
 import { UsersManager } from "@/components/users/users-manager";
+import { mfaEnabled } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Users & access" };
 
@@ -16,6 +17,7 @@ export default async function UsersPage() {
       <PageHeader eyebrow="Owner controls" title="Users & Access" description="Create HR accounts, assign roles and grant individual permissions. Employee logins are created by invitation from Employee Access. Changes revoke the user's active sessions." />
       <UsersManager
         currentUserId={actor.id}
+        mfaAvailable={mfaEnabled()}
         grantable={GRANTABLE}
         rolePermissions={{
           OWNER: [...ROLE_PERMISSIONS.OWNER],

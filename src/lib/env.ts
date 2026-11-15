@@ -15,6 +15,8 @@ const schema = z.object({
   IP_HASH_SECRET: z.string().min(16),
   ERROR_MONITORING_DSN: z.string().optional(),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  // Authenticator-app (TOTP) sign-in. Off by default for now: email + password only.
+  MFA_ENABLED: z.enum(["true", "false"]).default("false"),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -35,6 +37,14 @@ export function env(): Env {
   }
   cached = parsed.data;
   return cached;
+}
+
+/**
+ * Whether authenticator-app sign-in is switched on. When off, nobody is asked for a code or sent to
+ * enrol; existing enrolments stay in the database and apply again once it is switched back on.
+ */
+export function mfaEnabled(): boolean {
+  return env().MFA_ENABLED === "true";
 }
 
 /** Canonical base URL without trailing slash. */

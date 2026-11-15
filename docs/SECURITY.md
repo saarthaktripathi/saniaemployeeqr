@@ -61,7 +61,7 @@ This document describes what the platform protects, the threats considered, the 
 - **A valid QR proves record status, not identity.** Someone holding another employee's printed ID will verify as that employee. The public page says so; high-assurance uses need a photo ID check.
 - **Documents are not virus-scanned.** Only PDF and image types are accepted (checked by content) and they are always downloaded, never executed by the app, but a PDF could still carry malicious content for the reader's PDF viewer. Add scanning (e.g. ClamAV or the object store's scanning) before accepting files from outside HR.
 - **Compensation and documents live in the same database as everything else** (encrypted at rest by the provider, not by the app). Database administrators can read them; restrict database access accordingly.
-- **MFA is enforced only when "Require MFA" is on** (default on; off in the local demo seed). Recovery for lost authenticators = owner resets the password and the user re-enrols; backup codes are shown once.
+- **MFA is switched off for now** (`MFA_ENABLED` unset/`false`, since 2026-11-15): everyone, including Owners and HR Administrators, signs in with email and password only, nobody is sent to enrol, and the "Require MFA" rule is hidden. Enrolments already made stay in the database and apply again once `MFA_ENABLED=true` is set. With MFA on, it is enforced only when "Require MFA" is on (default on; off in the local demo seed). Recovery for lost authenticators = owner resets the password and the user re-enrols; backup codes are shown once.
 - **No email delivery yet.** Invitation and password-reset links are single-use, hashed and expiring, but HR shares them manually (e.g. WhatsApp). Treat chats containing links as sensitive; a link can be revoked or replaced from Employee Access.
 - **Row-level security covers the workforce tables and `employee` reads inside `withRls()`.** The app's own owner connection bypasses RLS (needed for HR features and the system sweeps), so a new service that skips `withRls()` is protected only by its permission checks. Production must allow the app's login role to `SET ROLE sania_rls` (verified on a Neon branch before deployment, see DEPLOYMENT_READINESS.md).
 - **Work location is self-declared** (no GPS/IP fencing); every punch is audited with the chosen location.
@@ -72,8 +72,8 @@ This document describes what the platform protects, the threats considered, the 
 
 1. Generate fresh secrets in the host's secret store (never reuse local `.env`).
 2. HTTPS only (`APP_BASE_URL` must be `https://` — enforced at startup).
-3. Create the first owner with `npm run owner:create`; enrol MFA immediately.
-4. Keep "Require MFA for privileged users" on.
+3. Create the first owner with `npm run owner:create`; once MFA is switched back on (`MFA_ENABLED=true`), enrol it immediately.
+4. With MFA on, keep "Require MFA for privileged users" on.
 5. Schedule `npm run maintenance:retention` daily.
 6. Enable automated database backups and test a restore (see Deployment).
 7. Commission an external penetration test before loading real employee data at scale.

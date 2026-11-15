@@ -4,6 +4,7 @@ import { requirePageActor } from "@/server/auth/session";
 import { getSettings } from "@/server/services/settings";
 import { PageHeader } from "@/components/ui/primitives";
 import { SettingsForm } from "@/components/settings/settings-form";
+import { mfaEnabled } from "@/lib/env";
 
 export const metadata: Metadata = { title: "System rules" };
 
@@ -14,6 +15,7 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow="Owner controls" title="System Rules" description="Company-wide identity and verification policies. Every change is recorded in the activity log." />
       <SettingsForm
+        mfaAvailable={mfaEnabled()}
         initial={{
           companyName: s.companyName,
           tagline: s.tagline,

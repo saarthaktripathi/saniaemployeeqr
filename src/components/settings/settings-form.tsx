@@ -25,7 +25,7 @@ export interface SettingsValues {
   requireMfaForPrivileged: boolean;
 }
 
-export function SettingsForm({ initial }: { initial: SettingsValues }) {
+export function SettingsForm({ initial, mfaAvailable }: { initial: SettingsValues; mfaAvailable: boolean }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -111,12 +111,18 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
       <Card>
         <CardHeader eyebrow="Security" title="Access & retention" />
         <div className="space-y-4 p-5">
-          <Checkbox
-            label="Require multi-factor authentication for Owners, HR Administrators and anyone with salary or document access"
-            description="Privileged users without an authenticator app are sent to enrol before they can use the dashboard."
-            checked={v.requireMfaForPrivileged}
-            onChange={(e) => set("requireMfaForPrivileged", e.target.checked)}
-          />
+          {mfaAvailable ? (
+            <Checkbox
+              label="Require multi-factor authentication for Owners, HR Administrators and anyone with salary or document access"
+              description="Privileged users without an authenticator app are sent to enrol before they can use the dashboard."
+              checked={v.requireMfaForPrivileged}
+              onChange={(e) => set("requireMfaForPrivileged", e.target.checked)}
+            />
+          ) : (
+            <p className="text-sm text-ink-muted" data-testid="mfa-switched-off">
+              Authenticator-app sign-in is switched off for now: everyone signs in with email and password only.
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Audit log retention (days)" htmlFor="auditRetentionDays" error={errors.auditRetentionDays} hint="Minimum 90. Older entries are purged by the retention job.">
               <Input {...num("auditRetentionDays")} min={90} max={3650} />

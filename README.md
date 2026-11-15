@@ -22,7 +22,7 @@ A full-stack web application for managing employee records and issuing a unique,
 | Leave | Configurable leave types and yearly quotas, apply/cancel, clarification requests, HR approval, leave calendar; approved leave never counts as absence |
 | Notifications | In-app notification centre with unread counts and live delivery (tasks, leave, attendance, deadlines, announcements) |
 | Access control | Owner / HR Administrator / HR Staff / Management / **Team Manager** / **Employee** roles plus individually grantable permissions, enforced on the server **and** by PostgreSQL row-level security for workforce data |
-| Security | Argon2id passwords, TOTP MFA (enforceable for privileged roles and anyone with salary/document access), DB-backed rate limits, CSP with nonces, CSRF origin checks, append-only audit log |
+| Security | Argon2id passwords, TOTP MFA (enforceable for privileged roles and anyone with salary/document access; switched off for now via `MFA_ENABLED`), DB-backed rate limits, CSP with nonces, CSRF origin checks, append-only audit log |
 
 ## Quick start (local development)
 

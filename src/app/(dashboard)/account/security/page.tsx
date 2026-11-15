@@ -3,6 +3,7 @@ import { requirePageActor, mfaSetupRequired } from "@/server/auth/session";
 import { Alert, PageHeader } from "@/components/ui/primitives";
 import { MfaSetup } from "@/components/auth/mfa-setup";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
+import { mfaEnabled } from "@/lib/env";
 
 export const metadata: Metadata = { title: "Account security" };
 
@@ -17,7 +18,7 @@ export default async function SecurityPage() {
           Your role requires an authenticator app. Set it up below to continue to the dashboard.
         </Alert>
       )}
-      <MfaSetup enabled={actor.twoFactorEnabled} />
+      {mfaEnabled() && <MfaSetup enabled={actor.twoFactorEnabled} />}
       <ChangePasswordForm />
     </div>
   );

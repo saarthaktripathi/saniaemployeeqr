@@ -1,5 +1,7 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
+import { Client } from "pg";
 import sharp from "sharp";
+import { E2E_DB } from "../../playwright.config";
 import { ACCOUNTS, login, stateFile } from "./helpers";
 
 const year = new Date().getUTCFullYear();
@@ -251,6 +253,43 @@ test.describe("audit and real-time", () => {
     await expect(watcher.getByTestId("employee-row").getByText("Realtime Testcase")).toBeVisible();
     await watcherCtx.close();
     await editorCtx.close();
+  });
+});
+
+test.describe("sign-in without MFA", () => {
+  test("HR signs in with email and password only, even when enrolled and with the MFA rule on", async ({ browser }) => {
+    const pg = new Client({ connectionString: E2E_DB });
+    await pg.connect();
+    const restore = async () => {
+      await pg.query(`UPDATE "company_settings" SET "requireMfaForPrivileged" = false`);
+      await pg.query(`UPDATE "user" SET "twoFactorEnabled" = false WHERE "email" = $1`, [ACCOUNTS.hradmin.email]);
+    };
+    try {
+      await pg.query(`UPDATE "company_settings" SET "requireMfaForPrivileged" = true`);
+      await pg.query(`UPDATE "user" SET "twoFactorEnabled" = true WHERE "email" = $1`, [ACCOUNTS.hradmin.email]);
+
+      const ctx = await browser.newContext({ extraHTTPHeaders: { "X-Forwarded-For": "198.51.100.90" } });
+      const page = await ctx.newPage();
+      await login(page, "hradmin");
+      await expect(page.getByLabel("Authenticator code")).toHaveCount(0);
+      await page.goto("/account/security");
+      await expect(page.getByRole("heading", { name: "Account Security" })).toBeVisible();
+      await expect(page.getByText(/authenticator/i)).toHaveCount(0);
+      await ctx.close();
+
+      // Not enrolled and covered by the rule: still no enrolment detour.
+      const owner = await as(browser, "owner");
+      const ownerPage = await owner.newPage();
+      await ownerPage.goto("/dashboard");
+      await expect(ownerPage).toHaveURL(/\/dashboard$/);
+      expect((await ownerPage.request.get("/api/employees")).status()).toBe(200);
+      await ownerPage.goto("/settings");
+      await expect(ownerPage.getByTestId("mfa-switched-off")).toBeVisible();
+      await owner.close();
+    } finally {
+      await restore();
+      await pg.end();
+    }
   });
 });
 

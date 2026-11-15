@@ -5,7 +5,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { db } from "@/server/db/client";
-import { baseUrl, env } from "@/lib/env";
+import { baseUrl, env, mfaEnabled } from "@/lib/env";
 import { hashIp } from "@/server/security/crypto";
 import { recordAudit } from "@/server/services/audit";
 import { logger } from "@/server/logging/logger";
@@ -113,7 +113,8 @@ function createAuth() {
         }
       }),
     },
-    plugins: [twoFactor({ issuer: "Sania Job Bowl" }), nextCookies()],
+    // Without the two-factor plugin, sign-in never asks for an authenticator code.
+    plugins: [...(mfaEnabled() ? [twoFactor({ issuer: "Sania Job Bowl" })] : []), nextCookies()],
   });
 }
 

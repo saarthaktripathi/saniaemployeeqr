@@ -38,7 +38,19 @@ interface UserRow {
   employee: { employeeCode: string; displayName: string } | null;
 }
 
-export function UsersManager({ users, currentUserId, grantable, rolePermissions }: { users: UserRow[]; currentUserId: string; grantable: string[]; rolePermissions: Record<Role, string[]> }) {
+export function UsersManager({
+  users,
+  currentUserId,
+  grantable,
+  rolePermissions,
+  mfaAvailable,
+}: {
+  users: UserRow[];
+  currentUserId: string;
+  grantable: string[];
+  rolePermissions: Record<Role, string[]>;
+  mfaAvailable: boolean;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -79,7 +91,7 @@ export function UsersManager({ users, currentUserId, grantable, rolePermissions 
                       {ROLE_LABELS[u.role]}
                     </Badge>
                     {u.isActive ? <Badge tone="success">Enabled</Badge> : <Badge tone="danger">Disabled</Badge>}
-                    {u.twoFactorEnabled ? <Badge tone="teal">MFA on</Badge> : <Badge tone="warning">MFA off</Badge>}
+                    {mfaAvailable && (u.twoFactorEnabled ? <Badge tone="teal">MFA on</Badge> : <Badge tone="warning">MFA off</Badge>)}
                     {u.employee && (
                       <Badge tone="violet" dot={false}>
                         Employee {u.employee.employeeCode}
