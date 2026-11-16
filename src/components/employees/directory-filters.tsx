@@ -66,7 +66,7 @@ export function DirectoryFilters({ options, query, managerName }: { options: Fil
             id="dir-search"
             type="search"
             placeholder="Search by name, employee ID (e.g. SJB-2026-001) or email"
-            className="h-12 rounded-xl border-white pl-10 shadow-[0_2px_10px_rgb(30_41_90/0.06)]"
+            className="h-12 rounded-xl border-white pl-10 shadow-[0_2px_10px_rgb(23_29_74/0.06)]"
             value={q}
             maxLength={100}
             onChange={(e) => {
@@ -161,7 +161,7 @@ function FilterSelect({ label, value, onChange, options, className }: { label: s
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "h-11 w-full min-w-0 truncate rounded-xl border-white shadow-[0_2px_10px_rgb(30_41_90/0.06)] transition-colors",
+          "h-11 w-full min-w-0 truncate rounded-xl border-white shadow-[0_2px_10px_rgb(23_29_74/0.06)] transition-colors",
           label === "Sort" && "w-auto min-w-44",
           changed && label !== "Sort" && "border-primary-500/60 bg-primary-50 text-primary-700",
           className,

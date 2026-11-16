@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { ArrowLeft, ArrowRight, Building2, ExternalLink, LockKeyhole, Pencil } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Contact, ExternalLink, LockKeyhole, Pencil } from "lucide-react";
 import { db } from "@/server/db/client";
 import { requirePageActor } from "@/server/auth/session";
 import { can, type Permission } from "@/server/authorization/permissions";
@@ -76,7 +76,7 @@ export default async function EmployeePage({ params, searchParams }: { params: P
       <Link href="/dashboard" className="no-print mb-3 inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" aria-hidden /> Employee Directory
       </Link>
-      <div className="animate-fade mb-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-primary-100 bg-[radial-gradient(120%_140%_at_0%_0%,#eef2ff_0%,#f3efff_38%,#e6f7fb_72%,#ffffff_100%)] px-5 py-5 sm:px-6">
+      <div className="animate-fade mb-4 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-card)] border border-primary-100 bg-[radial-gradient(120%_140%_at_0%_0%,#f1f2fb_0%,#eef0fa_38%,#f4f4fa_72%,#ffffff_100%)] px-5 py-5 sm:px-6">
         <div className="flex min-w-0 items-center gap-4">
           <EmployeeAvatar id={id} name={employee.displayName} photoUpdatedAt={photoStamp(employee)} size="lg" className="shadow-md ring-4" />
           <div className="min-w-0">
@@ -93,14 +93,21 @@ export default async function EmployeePage({ params, searchParams }: { params: P
             </p>
           </div>
         </div>
-        {can(actor, "employee:update") && !archived && (
-          <ButtonLink href={`/employees/${id}/edit`} variant="secondary">
-            <Pencil className="size-4" aria-hidden /> Edit
-          </ButtonLink>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {!archived && (
+            <ButtonLink href={`/employees/${id}/visiting-card`} variant="secondary">
+              <Contact className="size-4" aria-hidden /> Visiting card
+            </ButtonLink>
+          )}
+          {can(actor, "employee:update") && !archived && (
+            <ButtonLink href={`/employees/${id}/edit`} variant="secondary">
+              <Pencil className="size-4" aria-hidden /> Edit
+            </ButtonLink>
+          )}
+        </div>
       </div>
 
-      <nav aria-label="Employee sections" className="no-print mb-5 flex gap-1 overflow-x-auto rounded-xl border border-white bg-white/70 p-1 shadow-[0_2px_10px_rgb(30_41_90/0.05)]">
+      <nav aria-label="Employee sections" className="no-print mb-5 flex gap-1 overflow-x-auto rounded-xl border border-white bg-white/70 p-1 shadow-[0_2px_10px_rgb(23_29_74/0.05)]">
         {tabs.map((t) => (
           <Link
             key={t.key}

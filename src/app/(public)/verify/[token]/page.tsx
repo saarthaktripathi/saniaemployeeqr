@@ -4,8 +4,7 @@ import { Info } from "lucide-react";
 import { db } from "@/server/db/client";
 import { requestContextFromHeaders } from "@/server/auth/request";
 import { verifyToken } from "@/server/services/verification";
-import { renderQrPath, verificationUrl } from "@/server/services/credentials";
-import { logoSrc } from "@/components/layout/logo";
+import { verificationUrl } from "@/server/services/credentials";
 import { Card } from "@/components/ui/primitives";
 import { StatusBanner } from "@/components/verification/id-card";
 import { IdCardSvg } from "@/components/verification/id-card-svg";
@@ -23,14 +22,13 @@ export default async function VerifyPage({ params }: { params: Promise<{ token: 
   const { token } = await params;
   // The backend decides everything on every request; nothing here trusts client state.
   const view = await verifyToken(db, token, requestContextFromHeaders(await headers()));
-  // Only draw a QR for credentials we actually issued (never echo arbitrary input).
+  // Only offer the link for credentials we actually issued (never echo arbitrary input).
   const url = view.employee ? verificationUrl(token) : null;
-  const qr = url && view.status !== "REVOKED" ? renderQrPath(url) : null;
   const e = view.employee;
 
   return (
     <div className="mx-auto max-w-md px-4 py-6 sm:max-w-4xl sm:px-6 sm:py-10">
-      <p className="no-print text-xs font-semibold tracking-wider text-teal-700 uppercase">Employee verification</p>
+      <p className="no-print text-xs font-semibold tracking-wider text-primary-600 uppercase">Employee verification</p>
       <h1 className="no-print mt-1 mb-5 text-xl font-semibold tracking-tight text-navy-900 sm:text-2xl">{view.company.name} credential check</h1>
 
       {/* Phones: verdict → card → details. Wider screens: card on the left, verdict and details on the right. */}
@@ -44,10 +42,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ token: 
             <IdCardSvg
               data={{ displayName: e.displayName, employeeCode: e.employeeCode, companyName: e.company, jobTitle: e.jobTitle, department: e.department, idExpiresAt: e.idExpiresAt, photo: e.photo }}
               status={cardStatusOf(view.status)}
-              qr={qr}
-              logoHref={logoSrc()}
               company={view.company.name}
-              tagline={view.company.tagline}
               className="h-auto w-full drop-shadow-xl"
             />
           </div>

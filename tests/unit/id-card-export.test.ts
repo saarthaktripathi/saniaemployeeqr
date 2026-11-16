@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { CARD_PAGE, jpegToPdf } from "@/lib/pdf-image";
+import { CARD_PAGE, imagesToPdf, jpegToPdf, mmToPt } from "@/lib/pdf-image";
+import { clip, fitSize, textWidth } from "@/components/cards/text-metrics";
+import { visitingCardData } from "@/components/cards/visiting-card-svg";
+import { BRAND_CONTACT } from "@/lib/brand";
 import { cellToText, sheetToCsv } from "@/lib/xlsx-import";
 import { encodeCsvForImport, parseCsv, toCsv } from "@/lib/csv";
 import { cardStatusOf, STATUS_COPY } from "@/components/verification/status";
@@ -23,6 +26,50 @@ describe("jpegToPdf", () => {
       const head = new TextDecoder("latin1").decode(bytes.slice(offset, offset + 8));
       expect(head).toBe(`${i + 1} 0 obj\n`);
     });
+  });
+});
+
+describe("imagesToPdf", () => {
+  it("writes one page per card side, each with its own size and orientation", () => {
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    const pdf = imagesToPdf([
+      { jpeg, width: 1080, height: 1712, pageWidth: mmToPt(54), pageHeight: mmToPt(85.6) },
+      { jpeg, width: 1712, height: 1080, pageWidth: mmToPt(85.6), pageHeight: mmToPt(54) },
+    ]);
+    const text = new TextDecoder("latin1").decode(pdf);
+    expect(text).toContain("/Kids [3 0 R 6 0 R] /Count 2");
+    expect(text).toContain("/MediaBox [0 0 153.07 242.65]");
+    expect(text).toContain("/MediaBox [0 0 242.65 153.07]");
+    const startxref = Number(/startxref\n(\d+)/.exec(text)![1]);
+    const entries = text.slice(startxref).split("\n").slice(3, 11).map((l) => Number(l.slice(0, 10)));
+    expect(entries).toHaveLength(8);
+    entries.forEach((offset, i) => expect(new TextDecoder("latin1").decode(pdf.slice(offset, offset + 8))).toBe(`${i + 1} 0 obj\n`));
+  });
+});
+
+describe("card text fitting", () => {
+  it("measures Urbanist widths and shrinks long text to fit", () => {
+    // Chromium measures the kerned string at 483.5px; the per-glyph sum may only over-estimate (never overflow), by under 2%.
+    const hello = textWidth("Hello World", 100, 400);
+    expect(hello).toBeGreaterThanOrEqual(483.5);
+    expect(hello).toBeLessThan(483.5 * 1.02);
+    expect(textWidth("AB", 10, 800)).toBeGreaterThan(textWidth("AB", 10, 400));
+    expect(fitSize(["MEERA", "RAO"], 468, 64, 800)).toBe(64);
+    const long = fitSize(["VENKATASUBRAMANIAN"], 468, 64, 800);
+    expect(long).toBeLessThan(64);
+    expect(textWidth("VENKATASUBRAMANIAN", long, 800)).toBeLessThanOrEqual(468.5);
+    expect(clip("a.very.long.address@saniajobbowl.com", 200, 28, 500)).toMatch(/…$/);
+    expect(clip("short", 200, 28, 500)).toBe("short");
+  });
+});
+
+describe("visitingCardData", () => {
+  it("uses the employee's contacts and falls back to the company's", () => {
+    const full = visitingCardData({ displayName: "Asha Rao", jobTitle: "Recruiter", phone: "+91 90000 00000", workEmail: "asha@saniajobbowl.com", workLocation: "Hyderabad" });
+    expect(full).toMatchObject({ phone: "+91 90000 00000", email: "asha@saniajobbowl.com", location: "Hyderabad, India", website: BRAND_CONTACT.website });
+    const bare = visitingCardData({ displayName: "Ravi", jobTitle: null, phone: null, workEmail: " ", workLocation: "Remote — India" });
+    expect(bare).toMatchObject({ phone: BRAND_CONTACT.phone, email: BRAND_CONTACT.email, location: BRAND_CONTACT.city });
+    expect(visitingCardData({ ...bare, phone: null, workEmail: null, workLocation: "Pune, India" }).location).toBe("Pune, India");
   });
 });
 

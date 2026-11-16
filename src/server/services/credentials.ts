@@ -21,7 +21,7 @@ export function renderQrSvg(url: string): Promise<string> {
     type: "svg",
     errorCorrectionLevel: "M",
     margin: 1,
-    color: { dark: "#0b1f3a", light: "#ffffff" },
+    color: { dark: "#030015", light: "#ffffff" },
   });
 }
 

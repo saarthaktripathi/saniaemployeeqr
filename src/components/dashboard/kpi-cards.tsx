@@ -30,12 +30,12 @@ interface Tone {
 
 /** Pastel per-card palettes (background tint, icon disc, selection ring, chart colour). */
 const TONES: Record<string, Tone> = {
-  blue: { card: "from-[#eef3ff] to-white border-[#dfe7ff]", icon: "bg-[#e3eaff] text-[#3b5bdb]", ring: "ring-[#4c6ef5]", line: "#4c6ef5" },
-  green: { card: "from-[#eafaf1] to-white border-[#d3f2e1]", icon: "bg-[#d6f5e3] text-[#12a150]", ring: "ring-[#12b886]", line: "#20c997" },
-  red: { card: "from-[#fff0f1] to-white border-[#ffdfe2]", icon: "bg-[#ffe0e3] text-[#e03140]", ring: "ring-[#f03e3e]", line: "#f06576" },
-  purple: { card: "from-[#f5f0ff] to-white border-[#e9e0ff]", icon: "bg-[#ece3ff] text-[#7c3aed]", ring: "ring-[#845ef7]", line: "#9775fa" },
+  blue: { card: "from-[#eef0fa] to-white border-[#dfe2f5]", icon: "bg-[#e3e6f7] text-[#2e3a97]", ring: "ring-[#3a4ac0]", line: "#3a4ac0" },
+  green: { card: "from-[#ebfaf1] to-white border-[#d3f2df]", icon: "bg-[#d3f7e2] text-[#168242]", ring: "ring-[#1eae59]", line: "#1eae59" },
+  red: { card: "from-[#fef3f1] to-white border-[#fbe0d9]", icon: "bg-[#fde3dc] text-[#dc3914]", ring: "ring-[#ed5735]", line: "#ed5735" },
+  purple: { card: "from-[#f4f4fa] to-white border-[#e3e4f1]", icon: "bg-[#e7e8f3] text-[#5358a6]", ring: "ring-[#7478b9]", line: "#7478b9" },
   amber: { card: "from-[#fff7e8] to-white border-[#ffecc7]", icon: "bg-[#ffeec8] text-[#e8890c]", ring: "ring-[#fd7e14]", line: "#fab005" },
-  teal: { card: "from-[#e8f9fb] to-white border-[#cff1f5]", icon: "bg-[#d3f3f7] text-[#0c8599]", ring: "ring-[#15aabf]", line: "#22b8cf" },
+  teal: { card: "from-[#ebfbf8] to-white border-[#d2f2eb]", icon: "bg-[#d2f9f1] text-[#138670]", ring: "ring-[#19b194]", line: "#19b194" },
 };
 
 const ALL: Filter = { status: "ALL", credential: "ANY", expiry: "ANY" };
@@ -91,7 +91,7 @@ export function KpiCards({ stats, trends, query }: { stats: KpiStats; trends: Kp
             onClick={() => navigate(k.filter)}
             style={{ animationDelay: `${i * 35}ms` }}
             className={cn(
-              "group animate-rise relative flex min-h-[132px] flex-col overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left shadow-[0_2px_10px_rgb(30_41_90/0.05)] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgb(30_41_90/0.12)]",
+              "group animate-rise relative flex min-h-[132px] flex-col overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left shadow-[0_2px_10px_rgb(23_29_74/0.05)] transition-[box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgb(23_29_74/0.12)]",
               k.tone.card,
               active && cn("ring-2 ring-offset-2 ring-offset-page", k.tone.ring),
             )}

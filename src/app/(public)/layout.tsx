@@ -16,7 +16,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
             </Link>
             <Link
               href="/login?portal=employee"
-              className="inline-flex items-center gap-1.5 rounded-md bg-teal-700 px-3 py-2 font-medium text-white hover:bg-teal-800"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary-600 px-3 py-2 font-semibold text-white hover:bg-primary-500"
             >
               <UserRound className="size-4" aria-hidden /> Employee Login
             </Link>

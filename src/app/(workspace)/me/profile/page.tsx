@@ -6,6 +6,8 @@ import { EmployeeAvatar } from "@/components/employees/employee-avatar";
 import { Badge, Card, CardHeader, DescriptionList, PageHeader } from "@/components/ui/primitives";
 import { EMPLOYMENT_TYPE_LABELS, WORK_MODE_LABELS } from "@/features/employees/labels";
 import { formatDate } from "@/lib/cn";
+import { CardExport } from "@/components/cards/card-export";
+import { VisitingCardSvg, visitingCardData } from "@/components/cards/visiting-card-svg";
 
 export const metadata: Metadata = { title: "My profile" };
 
@@ -65,6 +67,16 @@ export default async function MyProfilePage() {
           />
         </div>
       </Card>
+      {p.employmentStatus === "ACTIVE" && (
+        <Card>
+          <CardHeader title="My visiting card" description="Built from your official email, contact number and work location. Ask HR to correct any detail." />
+          <div className="p-5">
+            <CardExport filename={`${p.employeeCode}-visiting-card`} sides={["Card"]} noun="Visiting card" className="flex justify-center">
+              <VisitingCardSvg data={visitingCardData(p)} className="h-auto w-full max-w-[560px] drop-shadow-lg print:w-[88.9mm] print:max-w-none print:drop-shadow-none" />
+            </CardExport>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

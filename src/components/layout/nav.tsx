@@ -83,7 +83,7 @@ function NavLinks({ items, collapsed, onNavigate }: { items: NavItem[]; collapse
             className={cn(
               "group relative flex h-11 items-center gap-3 rounded-xl px-3.5 text-[15px] font-medium transition-[background-color,color,box-shadow] duration-200",
               active
-                ? "bg-gradient-to-r from-[#4f55e6] to-[#6b5cf0] text-white shadow-[0_6px_18px_rgb(79_85_230/0.45)]"
+                ? "bg-gradient-to-r from-primary-500 to-primary-400 text-white shadow-[0_6px_18px_rgb(58_74_192/0.45)]"
                 : "text-white/80 hover:bg-white/[0.07] hover:text-white",
               collapsed && "justify-center px-0",
             )}
@@ -105,7 +105,7 @@ function UserChip({ name, role, collapsed }: { name: string; role: string; colla
     .join("");
   return (
     <div className={cn("flex items-center gap-3 rounded-xl bg-white/[0.06] p-2.5", collapsed && "justify-center p-2")} title={collapsed ? `${name} · ${role}` : undefined}>
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-cyan-500 to-violet-600 text-xs font-semibold text-white" aria-hidden>
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-xs font-semibold text-white" aria-hidden>
         {initials}
       </span>
       <span className={cn("min-w-0 leading-tight", collapsed && "sr-only")}>
@@ -118,32 +118,25 @@ function UserChip({ name, role, collapsed }: { name: string; role: string; colla
   );
 }
 
-/** Decorative purple waves and a leaf at the bottom of the sidebar. */
+/** Decorative Royal Blue waves and the brand smile curve at the bottom of the sidebar. */
 function SidebarArt() {
   return (
     <svg className="pointer-events-none absolute inset-x-0 bottom-0 h-[62%] w-full" viewBox="0 0 260 560" preserveAspectRatio="none" aria-hidden>
       <defs>
         <linearGradient id="sb-w1" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#3b3a9e" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#1b1f5e" stopOpacity="0.2" />
+          <stop offset="0" stopColor="#3A4AC0" stopOpacity="0.5" />
+          <stop offset="1" stopColor="#171D4A" stopOpacity="0.2" />
         </linearGradient>
         <linearGradient id="sb-w2" x1="1" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#6d5ae6" stopOpacity="0.45" />
-          <stop offset="1" stopColor="#24296e" stopOpacity="0.1" />
-        </linearGradient>
-        <linearGradient id="sb-leaf" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#0f766e" />
-          <stop offset="1" stopColor="#2dd4bf" />
+          <stop offset="0" stopColor="#5E6CCE" stopOpacity="0.4" />
+          <stop offset="1" stopColor="#232C71" stopOpacity="0.1" />
         </linearGradient>
       </defs>
       <path d="M0 120 C 70 60, 150 170, 260 70 L260 560 L0 560 Z" fill="url(#sb-w1)" />
       <path d="M0 230 C 90 160, 170 290, 260 200 L260 560 L0 560 Z" fill="url(#sb-w2)" />
-      <path d="M0 330 C 80 290, 180 380, 260 320 L260 560 L0 560 Z" fill="#141a52" opacity="0.55" />
-      <g opacity="0.85">
-        <path d="M-6 420 C 18 360, 52 330, 74 318 C 66 362, 40 398, -6 420 Z" fill="url(#sb-leaf)" />
-        <path d="M-10 470 C 10 430, 40 410, 62 404 C 50 440, 22 462, -10 470 Z" fill="url(#sb-leaf)" opacity="0.8" />
-        <path d="M-6 420 L 74 318 M-10 470 L 62 404" stroke="#99f6e4" strokeWidth="1" opacity="0.4" />
-      </g>
+      <path d="M0 330 C 80 290, 180 380, 260 320 L260 560 L0 560 Z" fill="#0B0E23" opacity="0.5" />
+      {/* The brand's "smile" curve (logo rationale, brand book p.9). */}
+      <path d="M-10 452 C 60 488, 170 488, 270 420" stroke="#868FDA" strokeWidth="2" fill="none" opacity="0.35" />
     </svg>
   );
 }
@@ -159,13 +152,13 @@ export function Sidebar({ items, logo, initialCollapsed, homeHref = "/dashboard"
   return (
     <aside
       className={cn(
-        "no-print sticky top-0 hidden h-screen shrink-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#0b1437_0%,#0e1847_55%,#151c58_100%)] py-6 transition-[width] duration-300 ease-[var(--ease-out)] lg:flex",
+        "no-print sticky top-0 hidden h-screen shrink-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#030015_0%,#0B0E23_40%,#171D4A_100%)] py-6 transition-[width] duration-300 ease-[var(--ease-out)] lg:flex",
         collapsed ? "w-[80px] px-3" : "w-[260px] px-4",
       )}
       data-collapsed={collapsed}
     >
       <SidebarArt />
-      <Link href={homeHref} className={cn("relative mb-8 block rounded-md px-1", collapsed && "[&_.leading-tight]:hidden")}>
+      <Link href={homeHref} className={cn("relative mb-8 block rounded-md px-1", collapsed && "[&_.logo-full]:hidden [&_.logo-mark]:grid")}>
         {logo}
       </Link>
       <div className="relative">
@@ -174,12 +167,12 @@ export function Sidebar({ items, logo, initialCollapsed, homeHref = "/dashboard"
       <div className="relative mt-auto space-y-3">
         {!collapsed && (
           <figure className="rounded-2xl border border-white/15 bg-white/[0.06] p-4 text-white backdrop-blur-sm">
-            <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-[#6d6af5] to-[#8b5cf6] shadow-lg">
+            <span className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-primary-400 to-primary-500 shadow-lg">
               <Target className="size-[18px]" aria-hidden />
             </span>
             <blockquote className="mt-3 text-[13px] leading-relaxed text-white/90">{quote ?? "Great teams aren\u2019t built by chance, they\u2019re built by great people."}</blockquote>
             <svg viewBox="0 0 60 10" className="mt-2 ml-auto h-2.5 w-12" fill="none" aria-hidden>
-              <path d="M1 7 C 8 1, 14 9, 21 5 S 34 1, 40 6 S 52 9, 59 2" stroke="#818cf8" strokeWidth="1.6" strokeLinecap="round" />
+              <path d="M1 7 C 8 1, 14 9, 21 5 S 34 1, 40 6 S 52 9, 59 2" stroke="#ADB4E6" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
           </figure>
         )}
@@ -219,7 +212,7 @@ export function MobileNav({ items, logo, user }: { items: NavItem[]; logo: React
         aria-label="Menu"
         onClick={(e) => e.target === ref.current && close()}
         data-drawer
-        className="m-0 h-dvh max-h-none w-72 max-w-[85vw] -translate-x-full overflow-hidden bg-[linear-gradient(180deg,#0b1437_0%,#151c58_100%)] p-0 text-white transition-[translate,display,overlay] transition-discrete duration-300 ease-[var(--ease-out)] open:translate-x-0 starting:open:-translate-x-full lg:hidden"
+        className="m-0 h-dvh max-h-none w-72 max-w-[85vw] -translate-x-full overflow-hidden bg-[linear-gradient(180deg,#030015_0%,#171D4A_100%)] p-0 text-white transition-[translate,display,overlay] transition-discrete duration-300 ease-[var(--ease-out)] open:translate-x-0 starting:open:-translate-x-full lg:hidden"
       >
         <SidebarArt />
         <div className="relative flex h-full flex-col px-4 py-5">

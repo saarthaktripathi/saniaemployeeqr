@@ -79,7 +79,7 @@ export default async function LoginPage({ searchParams }: LoginProps) {
             </Link>
           ))}
         </nav>
-        <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wider text-teal-700 uppercase">
+        <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wider text-primary-600 uppercase">
           <Icon className="size-3.5" aria-hidden /> {copy.eyebrow}
         </div>
         <h1 className="text-xl font-semibold text-ink">{copy.title}</h1>

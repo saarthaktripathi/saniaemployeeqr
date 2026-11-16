@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
-import { Geist, Geist_Mono } from "next/font/google";
+import { preload } from "react-dom";
+import { Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { BRAND_FONT_URL } from "@/lib/brand";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -13,14 +14,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export const viewport: Viewport = { themeColor: "#0b1f3a" };
+export const viewport: Viewport = { themeColor: "#030015" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   // Render every page per request: the CSP nonce set in proxy.ts can only be applied to
   // Next.js scripts during dynamic rendering (static HTML would have its scripts blocked).
   await connection();
+  // Urbanist (brand typeface) is self-hosted and declared in globals.css; fetch it with the HTML.
+  preload(BRAND_FONT_URL, { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full">
         <a
           href="#main"

@@ -87,7 +87,7 @@ export function AttendanceCard({ initial, employee }: { initial: MyAttendanceTod
 
   return (
     <Card className="overflow-hidden" data-testid="attendance-card">
-      <div className={cn("relative px-5 py-5 text-white sm:px-6", open ? "bg-[linear-gradient(120deg,#047857_0%,#0f766e_55%,#0e7490_100%)]" : "bg-[linear-gradient(120deg,#312e81_0%,#4338ca_55%,#6d28d9_100%)]")}>
+      <div className={cn("relative px-5 py-5 text-white sm:px-6", open ? "bg-[linear-gradient(120deg,#0f572c_0%,#168242_55%,#138670_100%)]" : "bg-[linear-gradient(120deg,#171d4a_0%,#2e3a97_55%,#5358a6_100%)]")}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold tracking-wider text-white/75 uppercase">Today’s attendance</p>

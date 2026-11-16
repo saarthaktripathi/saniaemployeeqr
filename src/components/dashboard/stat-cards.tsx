@@ -13,13 +13,13 @@ export const RESULT_LABELS: Record<string, string> = {
 };
 
 const RESULT_COLORS: Record<string, string> = {
-  VERIFIED: "#20c997",
-  INACTIVE: "#f06576",
+  VERIFIED: "#1eae59",
+  INACTIVE: "#ed5735",
   ID_EXPIRED: "#fab005",
-  CREDENTIAL_EXPIRED: "#fd7e14",
-  REVOKED: "#e03140",
-  UNKNOWN: "#9775fa",
-  MALFORMED: "#868e96",
+  CREDENTIAL_EXPIRED: "#f17e64",
+  REVOKED: "#dc3914",
+  UNKNOWN: "#7478b9",
+  MALFORMED: "#9a99a1",
 };
 
 function Bars({ items }: { items: { label: string; count: number; color: string }[] }) {
@@ -63,7 +63,7 @@ export function Insights({ stats }: { stats: DashboardStats }) {
       <Card>
         <CardHeader eyebrow="Verification" title="Public checks, last 7 days" description="Results of QR scans by verifiers." />
         <div className="p-5">
-          <Bars items={stats.verifications7d.map((v) => ({ label: RESULT_LABELS[v.result] ?? v.result, count: v.count, color: RESULT_COLORS[v.result] ?? "#4c6ef5" }))} />
+          <Bars items={stats.verifications7d.map((v) => ({ label: RESULT_LABELS[v.result] ?? v.result, count: v.count, color: RESULT_COLORS[v.result] ?? "#3a4ac0" }))} />
         </div>
       </Card>
     </section>

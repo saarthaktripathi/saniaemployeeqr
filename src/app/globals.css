@@ -1,54 +1,122 @@
 @import "tailwindcss";
 
-/* Sania Job Bowl design tokens */
+/* Urbanist — the Sania primary typeface (brand book p.35–38), self-hosted variable font. */
+@font-face {
+  font-family: "Urbanist";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/urbanist-latin-wght-normal.woff2") format("woff2");
+}
+
+/*
+ * Sania Job Bowl design tokens, from public/branding/Sania Brand Guidelines.pdf:
+ * Royal Blue #2E3A97 · Black Russian #030015 · Athens White #F0F0F2 (p.22), Royal Blue tones (p.24),
+ * and the sister-company colours (p.23–31) used as secondary accents.
+ */
 @theme {
-  --color-page: #f3f6fb;
+  --color-page: #f0f0f2;
   --color-surface: #ffffff;
-  --color-border: #e1e7f0;
-  --color-border-strong: #c8d2e0;
-  --color-ink: #0f1d33;
-  --color-ink-muted: #56657a;
-  --color-ink-subtle: #8593a6;
+  --color-border: #e3e3ea;
+  --color-border-strong: #cdccd0;
+  --color-ink: #030015;
+  --color-ink-muted: #4f4d5b;
+  --color-ink-subtle: #77758a;
 
-  --color-navy-950: #060f22;
-  --color-navy-900: #0b1736;
-  --color-navy-800: #142350;
-  --color-navy-700: #1f3266;
-  --color-navy-100: #e5eaf5;
+  /* Dark surfaces: Black Russian into the deep Royal Blue tones */
+  --color-navy-950: #030015;
+  --color-navy-900: #0b0e23;
+  --color-navy-800: #171d4a;
+  --color-navy-700: #232c71;
+  --color-navy-100: #e8e9f4;
 
-  /* Primary: indigo-blue */
-  --color-primary-700: #3730a3;
-  --color-primary-600: #4f46e5;
-  --color-primary-500: #6366f1;
-  --color-primary-100: #e0e7ff;
-  --color-primary-50: #eef2ff;
+  /* Primary: Royal Blue tone scale (600 = Royal Blue) */
+  --color-primary-900: #0b0e23;
+  --color-primary-800: #171d4a;
+  --color-primary-700: #232c71;
+  --color-primary-600: #2e3a97;
+  --color-primary-500: #3a4ac0;
+  --color-primary-400: #5e6cce;
+  --color-primary-300: #868fda;
+  --color-primary-200: #adb4e6;
+  --color-primary-100: #d4d8f2;
+  --color-primary-50: #f1f2fb;
 
-  --color-violet-600: #7c3aed;
-  --color-violet-50: #f3efff;
-  --color-cyan-600: #0891b2;
-  --color-cyan-50: #e6f7fb;
+  /* Scampi — Sania Job Mitra */
+  --color-violet-900: #202241;
+  --color-violet-800: #313463;
+  --color-violet-700: #424685;
+  --color-violet-600: #5358a6;
+  --color-violet-500: #7478b9;
+  --color-violet-400: #9699ca;
+  --color-violet-300: #b8badb;
+  --color-violet-200: #dadbec;
+  --color-violet-100: #e7e8f3;
+  --color-violet-50: #f4f4fa;
 
-  --color-teal-700: #0f766e;
-  --color-teal-600: #0d9488;
-  --color-teal-50: #e6f6f4;
+  /* Royal Blue light tones stand in for cyan accents */
+  --color-cyan-700: #2e3a97;
+  --color-cyan-600: #3a4ac0;
+  --color-cyan-500: #5e6cce;
+  --color-cyan-100: #d4d8f2;
+  --color-cyan-50: #eef0fa;
 
-  --color-success-700: #15803d;
-  --color-success-600: #16a34a;
-  --color-success-50: #e7f7ec;
-  --color-danger-700: #be3a26;
-  --color-danger-600: #dc4a33;
-  --color-danger-50: #fdeeea;
+  /* Mountain Meadow — Sania Global Placements */
+  --color-teal-900: #062d25;
+  --color-teal-800: #0d594b;
+  --color-teal-700: #138670;
+  --color-teal-600: #19b194;
+  --color-teal-500: #20dfbb;
+  --color-teal-400: #4ce6c8;
+  --color-teal-300: #79ecd6;
+  --color-teal-200: #a6f2e4;
+  --color-teal-100: #d2f9f1;
+  --color-teal-50: #ebfbf8;
+
+  /* Jewel — Sania Payroll Solutions */
+  --color-emerald-800: #072b16;
+  --color-emerald-700: #0f572c;
+  --color-emerald-600: #168242;
+  --color-emerald-500: #1eae59;
+  --color-emerald-400: #51e18b;
+  --color-emerald-200: #a8f0c5;
+  --color-emerald-100: #d3f7e2;
+  --color-emerald-50: #ebfaf1;
+
+  /* Flamingo — Sania Skill Academy */
+  --color-orange-800: #7e210b;
+  --color-orange-700: #ad2d0f;
+  --color-orange-600: #dc3914;
+  --color-orange-500: #ed5735;
+  --color-orange-400: #f17e64;
+  --color-orange-200: #f5a593;
+  --color-orange-100: #facdc2;
+  --color-orange-50: #fef3f1;
+
+  /* Atlantis — Sania One Day Hiring */
+  --color-lime-700: #4f5c14;
+  --color-lime-600: #73861d;
+  --color-lime-500: #97b026;
+  --color-lime-400: #b7d437;
+  --color-lime-100: #e4efb3;
+  --color-lime-50: #f3f8dd;
+
+  /* Status colours, drawn from the sister-company tones where they fit */
+  --color-success-700: #0f572c;
+  --color-success-600: #168242;
+  --color-success-50: #ebfaf1;
+  --color-danger-700: #ad2d0f;
+  --color-danger-600: #dc3914;
+  --color-danger-50: #fef3f1;
   --color-warning-700: #a15c07;
   --color-warning-600: #d97706;
   --color-warning-50: #fdf5e4;
-  --color-orange-700: #c2410c;
-  --color-orange-50: #fff1e8;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Urbanist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  --shadow-card: 0 1px 2px rgb(15 29 51 / 0.04), 0 2px 6px rgb(15 29 51 / 0.05);
-  --shadow-lift: 0 4px 10px rgb(15 29 51 / 0.06), 0 12px 28px rgb(15 29 51 / 0.08);
+  --shadow-card: 0 1px 2px rgb(3 0 21 / 0.04), 0 2px 6px rgb(3 0 21 / 0.05);
+  --shadow-lift: 0 4px 10px rgb(3 0 21 / 0.06), 0 12px 28px rgb(46 58 151 / 0.08);
   --radius-card: 1rem;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -76,6 +144,9 @@ body {
   background: var(--color-page);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  /* Brand body text: Urbanist Medium with slight negative tracking (p.37–38) */
+  font-weight: 500;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -122,7 +193,7 @@ dialog:not([data-drawer])[open] {
   }
 }
 dialog::backdrop {
-  background: rgb(6 15 34 / 0);
+  background: rgb(3 0 21 / 0);
   backdrop-filter: blur(0);
   transition:
     background 220ms ease-out,
@@ -131,12 +202,12 @@ dialog::backdrop {
     display 220ms allow-discrete;
 }
 dialog[open]::backdrop {
-  background: rgb(6 15 34 / 0.45);
+  background: rgb(3 0 21 / 0.45);
   backdrop-filter: blur(2px);
 }
 @starting-style {
   dialog[open]::backdrop {
-    background: rgb(6 15 34 / 0);
+    background: rgb(3 0 21 / 0);
     backdrop-filter: blur(0);
   }
 }

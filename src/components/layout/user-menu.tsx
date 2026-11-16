@@ -49,7 +49,7 @@ export function UserMenu({
         aria-label={`Account menu for ${name}`}
         className="flex items-center gap-2.5 rounded-full py-1 pr-2 pl-1 transition-colors hover:bg-navy-100/70"
       >
-        <span className="grid size-10 place-items-center rounded-full bg-[#0f1a3d] text-sm font-semibold text-white ring-2 ring-white" aria-hidden>
+        <span className="grid size-10 place-items-center rounded-full bg-navy-950 text-sm font-semibold text-white ring-2 ring-white" aria-hidden>
           {initials(name)}
         </span>
         <span className="hidden text-left leading-tight sm:block">

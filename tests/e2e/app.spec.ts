@@ -152,7 +152,7 @@ test.describe("employee lifecycle and QR verification", () => {
     const verifier = await pub.newPage();
     await verifier.goto(url);
     await expect(verifier.getByTestId("verification-status")).toHaveText("VALID");
-    await expect(verifier.getByTestId("employee-name")).toHaveText("Lifecycle Testcase");
+    await expect(verifier.getByTestId("employee-name")).toHaveText(/^Lifecycle Testcase$/i);
     await expect(verifier.getByText("Senior QA Analyst").first()).toBeVisible();
     // The public page never links into the HR dashboard.
     await expect(verifier.locator('a[href^="/dashboard"], a[href^="/employees"]')).toHaveCount(0);
@@ -373,23 +373,38 @@ test.describe("employee photo and digital ID card", () => {
     const verifier = await verifierCtx.newPage();
     await verifier.goto(url);
     await expect(verifier.getByTestId("verification-status")).toHaveText("VALID");
-    await expect(verifier.getByTestId("employee-name")).toHaveText("Photo Testcase");
+    await expect(verifier.getByTestId("employee-name")).toHaveText(/^Photo Testcase$/i);
     await expect(verifier.locator('[data-testid="id-card-svg"] image[href^="data:image/webp"]')).toHaveCount(1);
     const overflow = await verifier.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
 
-    // ID card page: card with photo, PNG and PDF downloads.
+    // ID card page: front with photo, back with the QR; PNG per side and a two-page PDF.
     await page.getByRole("link", { name: "ID card" }).click();
     await expect(page.locator('[data-testid="id-card-svg"] image[href^="data:image/webp"]')).toHaveCount(1);
+    await expect(page.getByTestId("id-card-back-svg")).toContainText("SCAN TO VERIFY ID");
     const png = page.waitForEvent("download");
-    await page.getByRole("button", { name: "PNG" }).click();
-    expect((await png).suggestedFilename()).toMatch(/-id-card\.png$/);
+    await page.getByRole("button", { name: "Front PNG" }).click();
+    expect((await png).suggestedFilename()).toMatch(/-id-card-front\.png$/);
+    const backPng = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Back PNG" }).click();
+    expect((await backPng).suggestedFilename()).toMatch(/-id-card-back\.png$/);
     const pdf = page.waitForEvent("download");
     await page.getByRole("button", { name: "PDF" }).click();
     const pdfFile = await pdf;
     expect(pdfFile.suggestedFilename()).toMatch(/-id-card\.pdf$/);
     const bytes = await (await import("node:fs/promises")).readFile((await pdfFile.path())!);
     expect(bytes.subarray(0, 8).toString("latin1")).toBe("%PDF-1.4");
+    expect(bytes.toString("latin1")).toContain("/Count 2");
+
+    // Visiting card from the employee page.
+    await page.goto(page.url().replace(/\/id-card$/, ""));
+    await page.getByRole("link", { name: "Visiting card" }).click();
+    await expect(page.getByTestId("visiting-card-name")).toHaveText("Photo Testcase");
+    await expect(page.getByTestId("visiting-card-svg")).toContainText("PHOTO ANALYST");
+    const vcPdf = page.waitForEvent("download");
+    await page.getByRole("button", { name: "PDF" }).click();
+    expect((await vcPdf).suggestedFilename()).toMatch(/-visiting-card\.pdf$/);
+    await page.goto(page.url().replace(/\/visiting-card$/, "/id-card"));
 
     // Edit: existing photo is shown; remove it and the card falls back to initials.
     await page.goto(page.url().replace(/\/id-card$/, "/edit"));

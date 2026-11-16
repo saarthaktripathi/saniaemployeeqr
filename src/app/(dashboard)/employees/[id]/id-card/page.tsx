@@ -11,9 +11,8 @@ import { getSettings } from "@/server/services/settings";
 import { AppError } from "@/lib/errors";
 import { verificationOutcome } from "@/features/employees/rules";
 import { Alert } from "@/components/ui/primitives";
-import { logoSrc } from "@/components/layout/logo";
-import { IdCardSvg } from "@/components/verification/id-card-svg";
-import { IdCardExport } from "@/components/verification/id-card-export";
+import { IdCardBackSvg, IdCardSvg } from "@/components/verification/id-card-svg";
+import { CardExport } from "@/components/cards/card-export";
 import { cardStatusOf } from "@/components/verification/status";
 
 export const metadata: Metadata = { title: "Employee ID card" };
@@ -31,7 +30,7 @@ export default async function IdCardPage({ params }: { params: Promise<{ id: str
   const status = preview ? verificationOutcome({ wellFormed: true, credential: { expiresAt: preview.expiresAt, revokedAt: null }, employee }) : null;
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-4xl">
       <div className="no-print mb-5 flex items-center justify-between">
         <Link href={`/employees/${id}`} className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink">
           <ArrowLeft className="size-4" aria-hidden /> Back to employee
@@ -43,7 +42,12 @@ export default async function IdCardPage({ params }: { params: Promise<{ id: str
         </Alert>
       ) : (
         <>
-          <IdCardExport filename={`${employee.employeeCode}-id-card`}>
+          <CardExport
+            filename={`${employee.employeeCode}-id-card`}
+            sides={["Front", "Back"]}
+            noun="ID card"
+            className="print-cards flex flex-col items-center gap-6 md:flex-row md:items-center md:justify-center print:flex-row print:items-start print:gap-[6mm]"
+          >
             <IdCardSvg
               data={{
                 displayName: employee.displayName,
@@ -55,14 +59,11 @@ export default async function IdCardPage({ params }: { params: Promise<{ id: str
                 photo,
               }}
               status={cardStatusOf(status)}
-              qr={preview.qrPath}
-              logoHref={logoSrc()}
               company={settings.companyName}
-              tagline={settings.tagline}
-              verifyHost={new URL(preview.url).host}
-              className="mx-auto h-auto w-full max-w-[360px] drop-shadow-xl print:max-w-[54mm] print:drop-shadow-none"
+              className="h-auto w-full max-w-[300px] shrink-0 drop-shadow-xl print:w-[54mm] print:max-w-none print:drop-shadow-none"
             />
-          </IdCardExport>
+            <IdCardBackSvg qr={preview.qrPath} className="h-auto w-full max-w-[476px] shrink-0 drop-shadow-xl print:w-[85.6mm] print:max-w-none print:drop-shadow-none" />
+          </CardExport>
           <p className="no-print mt-3 text-center text-xs text-ink-subtle">
             Scanning the QR shows this employee&apos;s live status at {new URL(preview.url).host}. PNG and PDF are generated on your device.
           </p>

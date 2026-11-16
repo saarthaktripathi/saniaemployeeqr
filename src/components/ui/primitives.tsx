@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("rounded-[var(--radius-card)] border border-white bg-surface shadow-[0_4px_20px_rgb(30_41_90/0.06)]", className)} {...props} />;
+  return <div className={cn("rounded-[var(--radius-card)] border border-white bg-surface shadow-[0_4px_20px_rgb(23_29_74/0.06)]", className)} {...props} />;
 }
 
 export function CardHeader({ title, description, actions, eyebrow }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
@@ -107,7 +107,7 @@ export function PageHeader({
       className={cn(
         "animate-fade relative mb-6 flex flex-wrap items-center justify-between gap-4",
         !plain &&
-          "overflow-hidden rounded-[22px] border border-white bg-[linear-gradient(110deg,#eef2ff_0%,#f5f0ff_35%,#fdf2f8_62%,#ecfeff_100%)] px-5 py-5 shadow-[0_4px_24px_rgb(79_70_229/0.08)] sm:px-7 sm:py-6",
+          "overflow-hidden rounded-[22px] border border-white bg-[linear-gradient(110deg,#f1f2fb_0%,#f4f4fa_40%,#eef0fa_70%,#fbfbfe_100%)] px-5 py-5 shadow-[0_4px_24px_rgb(46_58_151/0.08)] sm:px-7 sm:py-6",
       )}
     >
       {!plain && (

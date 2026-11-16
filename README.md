@@ -77,15 +77,20 @@ API: `POST /api/employees/delete` with `{ "ids": [...], "reason": "..." }`; `GET
 ## Employee photos and ID cards
 
 1. **Add Employee** (or **Edit**) → drag a photo onto the upload area or press **Browse files**. Drag to reposition, use the slider or mouse wheel to zoom, and press **Replace** or **Remove** if needed. The photo uploads (with a progress bar) right after the record is saved.
-2. On the employee page, **Issue QR credential**, then **ID card** → **PNG**, **PDF** (card-sized) or **Print**.
+2. On the employee page, **Issue QR credential**, then **ID card** → **Front PNG**, **Back PNG**, **PDF** (both sides, card-sized) or **Print**.
 3. Scanning the QR opens `/verify/<token>` on any phone, with no login. It shows the card with the photo and a live verdict. Deactivating, revoking or expiry changes the verdict immediately.
 4. **System Rules → Employee photo** controls whether the photo appears on the public page.
 
 Photos are stored in the `employee_photo` table (≈30 KB each), never in the employee row. The storage is behind an interface, so an object store (Cloudflare R2 / S3) can replace it later without changing the pages. The `20261101120000_employee_photo` migration only adds tables and columns; on Render it runs automatically at start.
 
-### Logo
+### Brand, ID cards and visiting cards
 
-Put the logo at `public/branding/sania-job-bowl-logo.png` (PNG, square, ideally 256×256 or larger, transparent background). It is picked up automatically (restart the server, or commit and push to redeploy); until then a neutral placeholder is shown. To change the browser-tab icon too, replace `src/app/favicon.ico` (or add `src/app/icon.png`).
+The look follows `public/branding/Sania Brand Guidelines.pdf`: Royal Blue `#2E3A97`, Black Russian `#030015`, Athens White `#F0F0F2` and the sister-company colours as Tailwind tokens in `src/app/globals.css`, with the Urbanist typeface self-hosted from `public/fonts/`.
+
+- **Logo**: vector paths extracted from the brand book live in `src/components/brand/logo-art.ts` (rendered by `SaniaLogo`); standalone files are in `public/branding/sania-logo*.svg`. The browser-tab and app icons are `src/app/icon.svg` and `src/app/apple-icon.png`.
+- **ID card**: front after the badge on brand book p.52, back after `public/branding/IDcard.jpeg` (company contacts plus the verification QR). Both sides export as PNG and as one two-page PDF at CR80 size.
+- **Visiting card**: after `public/branding/visitingcard.jpeg`, for every employee (employee page → **Visiting card**, and **My Profile** in the employee workspace). It uses the employee's official email, contact number and work location, falling back to the company's.
+- Company contact details and the seven verticals printed on the cards are in `src/lib/brand.ts`.
 
 ## Scripts
 

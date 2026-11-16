@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "My dashboard" };
 
 function Stat({ icon, label, value, tone, href }: { icon: React.ReactNode; label: string; value: React.ReactNode; tone: string; href?: string }) {
   const body = (
-    <Card className="flex h-full items-center gap-3 p-4 transition-shadow hover:shadow-[0_8px_28px_rgb(30_41_90/0.10)]">
+    <Card className="flex h-full items-center gap-3 p-4 transition-shadow hover:shadow-[0_8px_28px_rgb(23_29_74/0.10)]">
       <span className={`grid size-10 shrink-0 place-items-center rounded-full ${tone}`}>{icon}</span>
       <span className="min-w-0">
         <span className="block text-xs font-medium text-ink-muted">{label}</span>

@@ -1,7 +1,8 @@
 import { Briefcase, Building2, Code2, Headset, HeartHandshake, Landmark, Megaphone, Palette, UserRoundSearch, Users, Workflow } from "lucide-react";
 
 /** Stable accent per department (same name → same colour everywhere). */
-const ACCENTS = ["#4c6ef5", "#f59f00", "#7950f2", "#12b886", "#e64980", "#15aabf", "#fd7e14", "#40c057"] as const;
+// Brand palette: Royal Blue tones plus the sister-company colours (brand book p.23).
+const ACCENTS = ["#3a4ac0", "#19b194", "#5358a6", "#ed5735", "#168242", "#5e6cce", "#97b026", "#232c71"] as const;
 
 function hash(s: string): number {
   let h = 0;

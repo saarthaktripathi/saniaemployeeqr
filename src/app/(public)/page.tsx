@@ -7,7 +7,7 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
       <div className="grid items-start gap-10 lg:grid-cols-[1.1fr_1fr]">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-teal-700 uppercase">Public employee verification</p>
+          <p className="text-xs font-semibold tracking-wider text-primary-600 uppercase">Public employee verification</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-navy-900 sm:text-4xl">
             Confirm a Sania Job Bowl employee credential
           </h1>
@@ -22,7 +22,7 @@ export default function HomePage() {
               { icon: ShieldCheck, title: "Privacy first", text: "Only company-approved fields are shown. No contact details are ever displayed." },
             ].map(({ icon: Icon, title, text }) => (
               <li key={title} className="flex gap-3">
-                <span className="mt-0.5 rounded-lg bg-teal-50 p-2 text-teal-700">
+                <span className="mt-0.5 rounded-lg bg-primary-50 p-2 text-primary-600">
                   <Icon className="size-4" aria-hidden />
                 </span>
                 <span>

@@ -43,7 +43,7 @@ export function DayStatusBadge({ status }: { status: DayStatus }) {
 
 export function Kpi({ label, value, hint, tone, icon, href, testId }: { label: string; value: ReactNode; hint?: ReactNode; tone: string; icon: ReactNode; href?: string; testId?: string }) {
   const body = (
-    <Card className="flex h-full items-start gap-3 p-4 transition-shadow hover:shadow-[0_8px_28px_rgb(30_41_90/0.10)]" data-testid={testId}>
+    <Card className="flex h-full items-start gap-3 p-4 transition-shadow hover:shadow-[0_8px_28px_rgb(23_29_74/0.10)]" data-testid={testId}>
       <span className={cn("grid size-10 shrink-0 place-items-center rounded-full", tone)}>{icon}</span>
       <span className="min-w-0">
         <span className="block text-xs font-medium text-ink-muted">{label}</span>

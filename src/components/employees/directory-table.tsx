@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Archive, ArchiveRestore, CalendarDays, EllipsisVertical, IdCard, Pencil, QrCode, Trash2, UserPlus, Users } from "lucide-react";
+import { Archive, ArchiveRestore, CalendarDays, Contact, EllipsisVertical, IdCard, Pencil, QrCode, Trash2, UserPlus, Users } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, EmptyState } from "@/components/ui/primitives";
 import { CredentialBadge, EmploymentBadge, IdValidityBadge } from "./status-badges";
@@ -85,12 +85,13 @@ function RowMenu({ r, perms, request, del }: { r: DirectoryRow; perms: Directory
     const rect = ref.current?.getBoundingClientRect();
     if (!rect) return;
     anchorTop.current = rect.top;
-    const height = 44 * 3 + 8;
+    const height = 44 * items.length + 8;
     const below = rect.bottom + 4 + height < window.innerHeight;
     setPos({ top: below ? rect.bottom + 4 : rect.top - height - 4, left: Math.max(8, rect.right - 160) });
   };
   const items = [
     perms.credentialRead && r.credential === "VALID" && { key: "card", label: "ID card", icon: IdCard, href: `/employees/${r.id}/id-card` },
+    !r.archived && { key: "visiting", label: "Visiting card", icon: Contact, href: `/employees/${r.id}/visiting-card` },
     perms.archive && !r.archived && { key: "archive", label: "Archive", icon: Archive, onClick: () => request("archive", [r.id], r.displayName) },
     perms.archive && r.archived && { key: "unarchive", label: "Unarchive", icon: ArchiveRestore, onClick: () => request("unarchive", [r.id], r.displayName) },
     perms.delete && { key: "delete", label: "Delete", icon: Trash2, danger: true, onClick: () => del([r.id], r.displayName) },
@@ -158,12 +159,12 @@ function RowActions({ r, perms, request, del }: { r: DirectoryRow; perms: Direct
         </Link>
       )}
       {!r.archived && r.employmentStatus === "ACTIVE" && perms.deactivate && (
-        <button type="button" className={cn(pill, "min-w-[96px] border border-[#ffd3d6] bg-[#fff1f2] text-[#e03140] hover:bg-[#ffe3e6]")} onClick={() => request("deactivate", [r.id], r.displayName)}>
+        <button type="button" className={cn(pill, "min-w-[96px] border border-orange-100 bg-orange-50 text-danger-600 hover:bg-orange-100/60")} onClick={() => request("deactivate", [r.id], r.displayName)}>
           Deactivate
         </button>
       )}
       {!r.archived && r.employmentStatus === "INACTIVE" && perms.reactivate && (
-        <button type="button" className={cn(pill, "min-w-[96px] border border-[#bfeccf] bg-[#ecfbf1] text-[#12a150] hover:bg-[#dcf7e6]")} onClick={() => request("reactivate", [r.id], r.displayName)}>
+        <button type="button" className={cn(pill, "min-w-[96px] border border-emerald-200 bg-emerald-50 text-success-600 hover:bg-emerald-100")} onClick={() => request("reactivate", [r.id], r.displayName)}>
           Reactivate
         </button>
       )}
@@ -205,7 +206,7 @@ const TableRow = memo(function TableRow({
   del: RequestDelete;
 }) {
   return (
-    <tr className={cn("transition-colors hover:bg-[#f7f6ff]", checked && "bg-primary-50/70")} data-testid="employee-row">
+    <tr className={cn("transition-colors hover:bg-primary-50/60", checked && "bg-primary-50/70")} data-testid="employee-row">
       {bulkEnabled && (
         <td className="relative px-4 py-3">
           <span className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full" style={{ background: departmentAccent(r.department) }} aria-hidden />
@@ -294,7 +295,7 @@ export function DirectoryTable({ rows, perms, total, canCreate, footer }: { rows
 
   return (
     <DirectoryBusy>
-      <Card className="overflow-hidden rounded-2xl border-white shadow-[0_4px_24px_rgb(30_41_90/0.07)]">
+      <Card className="overflow-hidden rounded-2xl border-white shadow-[0_4px_24px_rgb(23_29_74/0.07)]">
         {dialog}
         {del.dialog}
         {bulkEnabled && visibleSelected.length > 0 && (
