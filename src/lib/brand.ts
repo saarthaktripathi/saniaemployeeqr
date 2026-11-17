@@ -29,6 +29,7 @@ export const BRAND_FONT_STACK = "Urbanist, 'Segoe UI', Arial, Helvetica, sans-se
 /** Company contact details printed on the ID card back and visiting cards. */
 export const BRAND_CONTACT = {
   legalName: "Sania Job Bowl Pvt. Ltd.",
+  tagline: "Connecting Talent. Creating the Future.",
   phone: "+91 63611 86321",
   email: "connect@saniajobbowl.com",
   website: "saniajobbowl.com",
