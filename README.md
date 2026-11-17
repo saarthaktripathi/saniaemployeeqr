@@ -88,7 +88,7 @@ Photos are stored in the `employee_photo` table (≈30 KB each), never in the em
 The look follows `public/branding/Sania Brand Guidelines.pdf`: Royal Blue `#2E3A97`, Black Russian `#030015`, Athens White `#F0F0F2` and the sister-company colours as Tailwind tokens in `src/app/globals.css`, with the Urbanist typeface self-hosted from `public/fonts/`.
 
 - **Logo**: vector paths extracted from the brand book live in `src/components/brand/logo-art.ts` (rendered by `SaniaLogo`); standalone files are in `public/branding/sania-logo*.svg`. The browser-tab and app icons are `src/app/icon.svg` and `src/app/apple-icon.png`.
-- **ID card**: front after the badge on brand book p.52, back after `public/branding/IDcard.jpeg` (company contacts plus the verification QR). Both sides export as PNG and as one two-page PDF at CR80 size.
+- **ID card**: both sides portrait CR80 on the navy-to-indigo brand gradient with a Royal Blue border. Front: logo and tagline, photo, name, designation, employee ID, validity and website. Back: company contacts, registered office and the verification QR. Both sides export as PNG and as one two-page PDF at card size.
 - **Visiting card**: after `public/branding/visitingcard.jpeg`, for every employee (employee page → **Visiting card**, and **My Profile** in the employee workspace). It uses the employee's official email, contact number and work location, falling back to the company's.
 - Company contact details and the seven verticals printed on the cards are in `src/lib/brand.ts`.
 

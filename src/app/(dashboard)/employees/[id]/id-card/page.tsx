@@ -62,7 +62,7 @@ export default async function IdCardPage({ params }: { params: Promise<{ id: str
               company={settings.companyName}
               className="h-auto w-full max-w-[300px] shrink-0 drop-shadow-xl print:w-[54mm] print:max-w-none print:drop-shadow-none"
             />
-            <IdCardBackSvg qr={preview.qrPath} className="h-auto w-full max-w-[476px] shrink-0 drop-shadow-xl print:w-[85.6mm] print:max-w-none print:drop-shadow-none" />
+            <IdCardBackSvg qr={preview.qrPath} className="h-auto w-full max-w-[300px] shrink-0 drop-shadow-xl print:w-[54mm] print:max-w-none print:drop-shadow-none" />
           </CardExport>
           <p className="no-print mt-3 text-center text-xs text-ink-subtle">
             Scanning the QR shows this employee&apos;s live status at {new URL(preview.url).host}. PNG and PDF are generated on your device.
